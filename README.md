@@ -10,7 +10,7 @@ cd ronn
 
 ```python
 python3 -m venv .env
-source .venv/bin/activate
+source .env/bin/activate
 pip install Flask
 python3 app.py
 ```
