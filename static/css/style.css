@@ -1,0 +1,206 @@
+/* Main Styling */
+:root {
+    --primary-color: #3498db;
+    --secondary-color: #2c3e50;
+    --success-color: #2ecc71;
+    --warning-color: #f39c12;
+    --danger-color: #e74c3c;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --body-bg: #f5f5f5;
+}
+
+body {
+    background-color: var(--body-bg);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+}
+
+/* Navbar */
+.navbar-brand {
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+/* Cards */
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-radius: 0.5rem;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-top-left-radius: 0.5rem !important;
+    border-top-right-radius: 0.5rem !important;
+}
+
+/* Buttons */
+.btn {
+    border-radius: 0.35rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    border-color: #2980b9;
+}
+
+/* Tables */
+.table {
+    margin-bottom: 0;
+}
+
+.table th {
+    font-weight: 600;
+    color: #555;
+}
+
+/* Timeline (used in How It Works section) */
+.timeline {
+    position: relative;
+    padding: 0;
+    list-style: none;
+}
+
+.timeline:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 20px;
+    width: 2px;
+    background-color: #e9ecef;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 30px;
+    padding-left: 60px;
+}
+
+.timeline-point {
+    position: absolute;
+    left: 10px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    margin-top: 15px;
+}
+
+/* Feature Icons */
+.feature-icon {
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Hero Section */
+.hero {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Forms */
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Badge styling */
+.badge {
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+}
+
+/* Footer */
+footer {
+    margin-top: auto;
+}
+
+footer a {
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+footer a:hover {
+    color: var(--primary-color) !important;
+}
+
+/* Blockchain Verification Status */
+.blockchain-verified {
+    display: inline-flex;
+    align-items: center;
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+.blockchain-pending {
+    display: inline-flex;
+    align-items: center;
+    color: var(--warning-color);
+    font-weight: 500;
+}
+
+/* Dashboard cards */
+.stats-card {
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.stats-card .icon {
+    font-size: 2.5rem;
+    opacity: 0.8;
+}
+
+/* Alerts */
+.alert {
+    border-radius: 0.5rem;
+    border: none;
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+    .timeline:before {
+        left: 15px;
+    }
+
+    .timeline-item {
+        padding-left: 40px;
+    }
+
+    .timeline-point {
+        left: 5px;
+    }
+}

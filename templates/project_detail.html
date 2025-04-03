@@ -1,16 +1,119 @@
 {% extends 'base.html' %}
 
-{% block title %}Create Project - BlockInspect{% endblock %}
+{% block title %}{{ project.name }} - BlockInspect{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-        <li class="breadcrumb-item"><a href="{{ url_for('projects') }}">Projects</a></li>
-        <li class="breadcrumb-item active">Create Project</li>
+        <li class="breadcrumb-item"><a href="{{ url_for('projects_list') }}">Projects</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ project.name }}</li>
     </ol>
 </nav>
 
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">{{ project.name }}</h5>
+        <span
+            class="badge {% if project.status == 'Active' %}bg-success{% elif project.status == 'On Hold' %}bg-warning{% elif project.status == 'Completed' %}bg-secondary{% endif %}">
+            {{ project.status }}
+        </span>
+    </div>
+    <div class="card-body p-4">
+        <div class="row">
+            <div class="col-md-8">
+                <h6>Description</h6>
+                <p>{{ project.description }}</p>
+                <h6>Location</h6>
+                <p><i class="fas fa-map-marker-alt me-2 text-muted"></i>{{ project.location }}</p>
+            </div>
+            <div class="col-md-4">
+                <h6>Dates</h6>
+                <p><i class="fas fa-calendar-alt me-2 text-muted"></i>Start: {{ project.start_date.strftime('%b %d,
+                    %Y') }}</p>
+                <p>
+                    <i class="fas fa-calendar-check me-2 text-muted"></i>End:
+                    {% if project.end_date %}
+                    {{ project.end_date.strftime('%b %d, %Y') }}
+                    {% else %}
+                    <span class="text-muted fst-italic">Not set</span>
+                    {% endif %}
+                </p>
+                <h6>Owner</h6>
+                {% set owner = users.get(project.owner_id) %}
+                <p><i class="fas fa-user me-2 text-muted"></i>{{ owner.username if owner else 'Unknown' }} ({{
+                    owner.role|capitalize if owner else '' }})</p>
+            </div>
+        </div>
+    </div>
+    {% if session.get('role') in ['admin', 'inspector', 'engineer'] and project.status == 'Active' %}
+    <div class="card-footer bg-light text-end">
+        <a href="{{ url_for('create_inspection', project_id=project.id) }}" class="btn btn-success">
+            <i class="fas fa-clipboard-check me-2"></i>Create New Inspection
+        </a>
+    </div>
+    {% endif %}
+</div>
+
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white py-3">
-        <h5
+        <h5 class="mb-0 fw-bold">Inspections for this Project</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if inspections %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Inspector</th>
+                        <th>Status</th>
+                        <th>Blockchain Verification</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inspection in inspections %}
+                    <tr>
+                        <td>{{ inspection.date.strftime('%b %d, %Y %I:%M %p') }}</td>
+                        <td>{{ inspection.inspector.username }}</td>
+                        <td>
+                            <span
+                                class="badge {% if inspection.status == 'Completed' %}bg-success{% else %}bg-warning{% endif %}">
+                                {{ inspection.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if inspection.blockchain_tx_hash %}
+                            <span class="text-success" data-bs-toggle="tooltip"
+                                title="{{ inspection.blockchain_tx_hash }}">
+                                <i class="fas fa-check-circle me-1"></i>Verified
+                            </span>
+                            {% else %}
+                            <span class="text-warning"><i class="fas fa-clock me-1"></i>Pending</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('inspection_detail', inspection_id=inspection.id) }}"
+                                class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-file-alt me-1"></i>Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center p-4 text-muted">
+            <p>No inspections recorded for this project yet.</p>
+            {% if session.get('role') in ['admin', 'inspector', 'engineer'] and project.status == 'Active' %}
+            <a href="{{ url_for('create_inspection', project_id=project.id) }}" class="btn btn-success">
+                <i class="fas fa-clipboard-check me-2"></i>Create First Inspection
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

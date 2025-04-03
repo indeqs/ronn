@@ -1,265 +1,440 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_bcrypt import Bcrypt
-from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, flash, session
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta
+import secrets
 import os
-from web3 import Web3
+from functools import wraps
 import hashlib
+import json
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.urandom(24)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site_inspection.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.secret_key = secrets.token_hex(16)
 
-db = SQLAlchemy(app)
-bcrypt = Bcrypt(app)
+# For demonstration purposes, we'll use simple dictionaries to store data
+# In a production app, you would use a proper database
+users = {}
+projects = {}
+inspections = {}
 
-# Connect to Ethereum node - will need to be adjusted for actual deployment
-w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545'))  # Local Ganache instance for development
 
-# ---------- DATABASE MODELS ----------
+# Sample data for demonstration
+def load_sample_data():
+    # Create sample users
+    users.update(
+        {
+            1: {
+                "id": 1,
+                "username": "admin",
+                "password": generate_password_hash("admin123"),
+                "email": "admin@blockinspect.com",
+                "role": "admin",
+            },
+            2: {
+                "id": 2,
+                "username": "engineer1",
+                "password": generate_password_hash("engineer123"),
+                "email": "engineer@blockinspect.com",
+                "role": "engineer",
+            },
+            3: {
+                "id": 3,
+                "username": "inspector1",
+                "password": generate_password_hash("inspector123"),
+                "email": "inspector@blockinspect.com",
+                "role": "inspector",
+            },
+        }
+    )
 
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(60), nullable=False)
-    role = db.Column(db.String(20), nullable=False)  # admin, engineer, inspector, stakeholder
-    inspections = db.relationship('Inspection', backref='inspector', lazy=True)
-    
-class Project(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    location = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    start_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    end_date = db.Column(db.DateTime, nullable=True)
-    status = db.Column(db.String(20), nullable=False, default='Active')
-    blockchain_address = db.Column(db.String(42), nullable=True)  # Ethereum address
-    inspections = db.relationship('Inspection', backref='project', lazy=True)
+    # Create sample projects
+    projects.update(
+        {
+            1: {
+                "id": 1,
+                "name": "City Center Complex",
+                "description": "Multi-story commercial complex with retail and office spaces",
+                "location": "Downtown Nairobi",
+                "start_date": datetime.now() - timedelta(days=60),
+                "end_date": datetime.now() + timedelta(days=300),
+                "status": "Active",
+                "owner_id": 1,
+                "inspections": [],
+            },
+            2: {
+                "id": 2,
+                "name": "Green Heights Apartments",
+                "description": "Eco-friendly residential complex with solar integration",
+                "location": "Westlands, Nairobi",
+                "start_date": datetime.now() - timedelta(days=120),
+                "end_date": datetime.now() + timedelta(days=180),
+                "status": "Active",
+                "owner_id": 2,
+                "inspections": [],
+            },
+            3: {
+                "id": 3,
+                "name": "Riverside Bridge Renovation",
+                "description": "Structural repairs and upgrade of existing bridge",
+                "location": "Riverside Drive",
+                "start_date": datetime.now() - timedelta(days=30),
+                "end_date": datetime.now() + timedelta(days=90),
+                "status": "On Hold",
+                "owner_id": 1,
+                "inspections": [],
+            },
+        }
+    )
 
-class Inspection(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=False)
-    inspector_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    status = db.Column(db.String(20), nullable=False, default='Pending')
-    findings = db.Column(db.Text, nullable=True)
-    recommendations = db.Column(db.Text, nullable=True)
-    blockchain_tx_hash = db.Column(db.String(66), nullable=True)  # Ethereum transaction hash
-    data_hash = db.Column(db.String(64), nullable=True)  # SHA256 hash of inspection data
+    # Create sample inspections
+    inspections.update(
+        {
+            1: {
+                "id": 1,
+                "project_id": 1,
+                "inspector_id": 3,
+                "date": datetime.now() - timedelta(days=15),
+                "status": "Completed",
+                "notes": "Foundation work completed according to specifications. All structural elements pass inspection.",
+                "blockchain_tx_hash": "0x7d8f5e21c4a9e96bf5eb5de85c46d8a2f701587e9943e5e9ab92b3c1b7c3cb4a",
+                "categories": {
+                    "structural": "Pass",
+                    "electrical": "Not Applicable",
+                    "plumbing": "Not Applicable",
+                    "safety": "Pass",
+                },
+            },
+            2: {
+                "id": 2,
+                "project_id": 1,
+                "inspector_id": 3,
+                "date": datetime.now() - timedelta(days=5),
+                "status": "Completed",
+                "notes": "Structural framework for floors 1-3 inspected. Minor adjustments needed in section B4.",
+                "blockchain_tx_hash": "0x3a2c2e25a7f1b98c7bf3a25d3f9e43b15ab3c2d6e5f8a9b1c4d7e10f2a3b5c8d",
+                "categories": {
+                    "structural": "Pass with Comments",
+                    "electrical": "Not Started",
+                    "plumbing": "Not Started",
+                    "safety": "Pass",
+                },
+            },
+            3: {
+                "id": 3,
+                "project_id": 2,
+                "inspector_id": 3,
+                "date": datetime.now() - timedelta(days=10),
+                "status": "Completed",
+                "notes": "Foundation and initial framing inspection completed. All elements meet specifications.",
+                "blockchain_tx_hash": None,  # Pending blockchain verification
+                "categories": {
+                    "structural": "Pass",
+                    "electrical": "Not Started",
+                    "plumbing": "Not Started",
+                    "safety": "Pass",
+                },
+            },
+        }
+    )
 
-    def calculate_hash(self):
-        """Calculate SHA256 hash of inspection data for integrity verification"""
-        data = f"{self.project_id}{self.inspector_id}{self.date}{self.findings}{self.recommendations}"
-        return hashlib.sha256(data.encode()).hexdigest()
+    # Update project inspections lists
+    for inspection_id, inspection in inspections.items():
+        project_id = inspection["project_id"]
+        if project_id in projects:
+            projects[project_id]["inspections"].append(inspection_id)
 
-    def save_to_blockchain(self):
-        """Save inspection data hash to blockchain"""
-        # In a production environment, this would interact with a deployed smart contract
-        self.data_hash = self.calculate_hash()
-        # Placeholder for blockchain transaction
-        self.blockchain_tx_hash = "0x" + "0" * 64  # Mock transaction hash
-        return True
 
-# ---------- ROUTES ----------
+# Login required decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Please login to access this page", "warning")
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
 
-@app.route('/')
+    return decorated_function
+
+
+# Role required decorator
+def role_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if "user_id" not in session:
+                flash("Please login to access this page", "warning")
+                return redirect(url_for("login"))
+
+            user = users.get(session["user_id"])
+            if not user or user["role"] not in roles:
+                flash("You do not have permission to access this page", "danger")
+                return redirect(url_for("dashboard"))
+            return f(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
+
+
+# Simulate blockchain transaction
+def create_blockchain_record(data):
+    # In a real implementation, this would interact with a blockchain network
+    # For demo purposes, we just create a hash of the data
+    data_string = json.dumps(data, default=str)
+    hash_object = hashlib.sha256(data_string.encode())
+    return "0x" + hash_object.hexdigest()
+
+
+# Routes
+@app.route("/")
 def index():
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/login', methods=['GET', 'POST'])
+
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        user = User.query.filter_by(username=username).first()
-        if user and bcrypt.check_password_hash(user.password, password):
-            session['user_id'] = user.id
-            session['role'] = user.role
-            flash('Login successful!', 'success')
-            return redirect(url_for('dashboard'))
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        # Find user by username
+        user_id = None
+        for uid, user in users.items():
+            if user["username"] == username:
+                user_id = uid
+                break
+
+        if user_id and check_password_hash(users[user_id]["password"], password):
+            session["user_id"] = user_id
+            session["username"] = username
+            session["role"] = users[user_id]["role"]
+            flash("Login successful!", "success")
+            return redirect(url_for("dashboard"))
         else:
-            flash('Login failed. Check username and password.', 'danger')
-    
-    return render_template('login.html')
+            flash("Invalid username or password", "danger")
 
-@app.route('/register', methods=['GET', 'POST'])
+    return render_template("login.html")
+
+
+@app.route("/register", methods=["GET", "POST"])
 def register():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        role = request.form.get('role')
-        
-        # Check if username or email already exists
-        user_exists = User.query.filter_by(username=username).first() or User.query.filter_by(email=email).first()
-        if user_exists:
-            flash('Username or email already exists.', 'danger')
-            return redirect(url_for('register'))
-        
-        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-        new_user = User(username=username, email=email, password=hashed_password, role=role)
-        
-        db.session.add(new_user)
-        db.session.commit()
-        
-        flash('Registration successful! You can now log in.', 'success')
-        return redirect(url_for('login'))
-    
-    return render_template('register.html')
+    if request.method == "POST":
+        username = request.form.get("username")
+        email = request.form.get("email")
+        password = request.form.get("password")
+        role = request.form.get("role")
 
-@app.route('/logout')
+        # Check if username or email already exists
+        if any(user["username"] == username for user in users.values()):
+            flash("Username already exists", "danger")
+            return render_template("register.html")
+
+        if any(user["email"] == email for user in users.values()):
+            flash("Email already exists", "danger")
+            return render_template("register.html")
+
+        # Create new user
+        new_id = max(users.keys(), default=0) + 1
+        users[new_id] = {
+            "id": new_id,
+            "username": username,
+            "password": generate_password_hash(password),
+            "email": email,
+            "role": role,
+        }
+
+        flash("Registration successful! Please login.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("register.html")
+
+
+@app.route("/logout")
 def logout():
     session.clear()
-    flash('You have been logged out.', 'info')
-    return redirect(url_for('index'))
+    flash("You have been logged out", "info")
+    return redirect(url_for("index"))
 
-@app.route('/dashboard')
+
+@app.route("/dashboard")
+@login_required
 def dashboard():
-    if 'user_id' not in session:
-        flash('Please log in to access this page.', 'warning')
-        return redirect(url_for('login'))
-    
-    user = User.query.get(session['user_id'])
-    projects = Project.query.all()
-    
-    if user.role == 'engineer' or user.role == 'inspector':
-        inspections = Inspection.query.filter_by(inspector_id=user.id).all()
+    user = users.get(session["user_id"])
+    user_projects = []
+    user_inspections = []
+
+    # Get projects based on user role
+    if user["role"] == "admin":
+        # Admin sees all projects
+        user_projects = list(projects.values())
+        user_inspections = list(inspections.values())
     else:
-        inspections = Inspection.query.all()
-    
-    return render_template('dashboard.html', user=user, projects=projects, inspections=inspections)
+        # Other roles see specific projects
+        for project in projects.values():
+            # Engineers see their projects, inspectors and stakeholders see all
+            if user["role"] == "engineer" and project["owner_id"] == user["id"]:
+                user_projects.append(project)
+            elif user["role"] in ["inspector", "stakeholder"]:
+                user_projects.append(project)
 
-@app.route('/projects')
-def projects():
-    if 'user_id' not in session:
-        flash('Please log in to access this page.', 'warning')
-        return redirect(url_for('login'))
-    
-    projects = Project.query.all()
-    return render_template('projects.html', projects=projects)
+        # Get inspections for these projects
+        for inspection in inspections.values():
+            if inspection["project_id"] in [p["id"] for p in user_projects]:
+                user_inspections.append(inspection)
 
-@app.route('/project/<int:project_id>')
+    # Add project and inspector objects to inspections for template access
+    for inspection in user_inspections:
+        inspection["project"] = projects.get(inspection["project_id"])
+        inspection["inspector"] = users.get(inspection["inspector_id"])
+
+    return render_template(
+        "dashboard.html",
+        user=user,
+        projects=user_projects,
+        inspections=user_inspections,
+    )
+
+
+@app.route("/projects")
+@login_required
+def projects_list():
+    user = users.get(session["user_id"])
+    user_projects = []
+
+    if user["role"] == "admin":
+        user_projects = list(projects.values())
+    else:
+        for project in projects.values():
+            if user["role"] == "engineer" and project["owner_id"] == user["id"]:
+                user_projects.append(project)
+            elif user["role"] in ["inspector", "stakeholder"]:
+                user_projects.append(project)
+
+    return render_template("projects.html", projects=user_projects)
+
+
+@app.route("/projects/<int:project_id>")
+@login_required
 def project_detail(project_id):
-    if 'user_id' not in session:
-        flash('Please log in to access this page.', 'warning')
-        return redirect(url_for('login'))
-    
-    project = Project.query.get_or_404(project_id)
-    inspections = Inspection.query.filter_by(project_id=project_id).all()
-    
-    return render_template('project_detail.html', project=project, inspections=inspections)
+    project = projects.get(project_id)
+    if not project:
+        flash("Project not found", "danger")
+        return redirect(url_for("projects_list"))
 
-@app.route('/create_project', methods=['GET', 'POST'])
+    # Get project inspections
+    project_inspections = []
+    for inspection_id in project["inspections"]:
+        inspection = inspections.get(inspection_id)
+        if inspection:
+            inspection["inspector"] = users.get(inspection["inspector_id"])
+            project_inspections.append(inspection)
+
+    return render_template(
+        "project_detail.html", project=project, inspections=project_inspections
+    )
+
+
+@app.route("/create_project", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "engineer")
 def create_project():
-    if 'user_id' not in session or session['role'] not in ['admin', 'engineer']:
-        flash('You do not have permission to create projects.', 'danger')
-        return redirect(url_for('dashboard'))
-    
-    if request.method == 'POST':
-        name = request.form.get('name')
-        location = request.form.get('location')
-        description = request.form.get('description')
-        start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d')
-        end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d') if request.form.get('end_date') else None
-        
-        new_project = Project(
-            name=name,
-            location=location,
-            description=description,
-            start_date=start_date,
-            end_date=end_date,
-            status='Active'
-        )
-        
-        db.session.add(new_project)
-        db.session.commit()
-        
-        flash('Project created successfully!', 'success')
-        return redirect(url_for('projects'))
-    
-    return render_template('create_project.html')
+    if request.method == "POST":
+        name = request.form.get("name")
+        description = request.form.get("description")
+        location = request.form.get("location")
+        start_date = datetime.strptime(request.form.get("start_date"), "%Y-%m-%d")
+        end_date = None
+        if request.form.get("end_date"):
+            end_date = datetime.strptime(request.form.get("end_date"), "%Y-%m-%d")
 
-@app.route('/create_inspection/<int:project_id>', methods=['GET', 'POST'])
+        # Create new project
+        new_id = max(projects.keys(), default=0) + 1
+        projects[new_id] = {
+            "id": new_id,
+            "name": name,
+            "description": description,
+            "location": location,
+            "start_date": start_date,
+            "end_date": end_date,
+            "status": "Active",
+            "owner_id": session["user_id"],
+            "inspections": [],
+        }
+
+        flash("Project created successfully", "success")
+        return redirect(url_for("project_detail", project_id=new_id))
+
+    return render_template("create_project.html")
+
+
+@app.route("/create_inspection/<int:project_id>", methods=["GET", "POST"])
+@login_required
+@role_required("admin", "inspector", "engineer")
 def create_inspection(project_id):
-    if 'user_id' not in session or session['role'] not in ['admin', 'inspector', 'engineer']:
-        flash('You do not have permission to create inspections.', 'danger')
-        return redirect(url_for('dashboard'))
-    
-    project = Project.query.get_or_404(project_id)
-    
-    if request.method == 'POST':
-        findings = request.form.get('findings')
-        recommendations = request.form.get('recommendations')
-        
-        new_inspection = Inspection(
-            project_id=project_id,
-            inspector_id=session['user_id'],
-            findings=findings,
-            recommendations=recommendations,
-            status='Completed'
-        )
-        
-        # Calculate and store hash, simulate blockchain storage
-        new_inspection.save_to_blockchain()
-        
-        db.session.add(new_inspection)
-        db.session.commit()
-        
-        flash('Inspection record created and secured on blockchain!', 'success')
-        return redirect(url_for('project_detail', project_id=project_id))
-    
-    return render_template('create_inspection.html', project=project)
+    project = projects.get(project_id)
+    if not project:
+        flash("Project not found", "danger")
+        return redirect(url_for("projects_list"))
 
-@app.route('/inspection/<int:inspection_id>')
+    if project["status"] != "Active":
+        flash("Inspections can only be created for active projects", "warning")
+        return redirect(url_for("project_detail", project_id=project_id))
+
+    if request.method == "POST":
+        notes = request.form.get("notes")
+        categories = {
+            "structural": request.form.get("structural"),
+            "electrical": request.form.get("electrical"),
+            "plumbing": request.form.get("plumbing"),
+            "safety": request.form.get("safety"),
+        }
+
+        # Create new inspection
+        new_id = max(inspections.keys(), default=0) + 1
+        new_inspection = {
+            "id": new_id,
+            "project_id": project_id,
+            "inspector_id": session["user_id"],
+            "date": datetime.now(),
+            "status": "Completed",
+            "notes": notes,
+            "blockchain_tx_hash": None,  # Will be generated after submission
+            "categories": categories,
+        }
+
+        # Generate blockchain record (this would communicate with a blockchain in production)
+        tx_hash = create_blockchain_record(new_inspection)
+        new_inspection["blockchain_tx_hash"] = tx_hash
+
+        # Save inspection
+        inspections[new_id] = new_inspection
+
+        # Update project inspections list
+        projects[project_id]["inspections"].append(new_id)
+
+        flash("Inspection created and secured on blockchain", "success")
+        return redirect(url_for("inspection_detail", inspection_id=new_id))
+
+    return render_template("create_inspection.html", project=project)
+
+
+@app.route("/inspection/<int:inspection_id>")
+@login_required
 def inspection_detail(inspection_id):
-    if 'user_id' not in session:
-        flash('Please log in to access this page.', 'warning')
-        return redirect(url_for('login'))
-    
-    inspection = Inspection.query.get_or_404(inspection_id)
-    
-    # Verify data integrity
-    current_hash = inspection.calculate_hash()
-    is_valid = current_hash == inspection.data_hash
-    
-    return render_template('inspection_detail.html', 
-                          inspection=inspection, 
-                          is_valid=is_valid,
-                          current_hash=current_hash)
+    inspection = inspections.get(inspection_id)
+    if not inspection:
+        flash("Inspection not found", "danger")
+        return redirect(url_for("dashboard"))
 
-@app.route('/generate_report/<int:project_id>')
-def generate_report(project_id):
-    if 'user_id' not in session:
-        flash('Please log in to access this page.', 'warning')
-        return redirect(url_for('login'))
-    
-    project = Project.query.get_or_404(project_id)
-    inspections = Inspection.query.filter_by(project_id=project_id).all()
-    
-    # Format for report generation
-    return render_template('report.html', project=project, inspections=inspections)
+    # Add related objects
+    inspection["project"] = projects.get(inspection["project_id"])
+    inspection["inspector"] = users.get(inspection["inspector_id"])
 
-@app.route('/api/verify_inspection/<int:inspection_id>', methods=['GET'])
-def verify_inspection(inspection_id):
-    inspection = Inspection.query.get_or_404(inspection_id)
-    current_hash = inspection.calculate_hash()
-    is_valid = current_hash == inspection.data_hash
-    
-    return jsonify({
-        'inspection_id': inspection_id,
-        'stored_hash': inspection.data_hash,
-        'calculated_hash': current_hash,
-        'is_valid': is_valid,
-        'blockchain_tx': inspection.blockchain_tx_hash
-    })
+    return render_template("inspection_detail.html", inspection=inspection)
 
-# Initialize database
-@app.before_first_request
-def create_tables():
-    db.create_all()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+    # Load sample data
+    load_sample_data()
+
+    # Run app
     app.run(debug=True)
