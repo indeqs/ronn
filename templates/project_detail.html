@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Project - BlockInspect{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('projects') }}">Projects</a></li>
+        <li class="breadcrumb-item active">Create Project</li>
+    </ol>
+</nav>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3">
+        <h5

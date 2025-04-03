@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - BlockInspect{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col">
+        <h2 class="fw-bold">Dashboard</h2>
+        <p class="text-muted mb-0">Welcome back, {{ user.username }}</p>
+    </div>
+    <div class="col-auto">
+        <div class="badge bg-primary">{{ user.role|capitalize }}</div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Active Projects</h5>
+                <h2 class="fw-bold text-primary">{{ projects|selectattr('status', 'equalto', 'Active')|list|length }}
+                </h2>
+                <p class="text-muted">Total active construction projects</p>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <a href="{{ url_for('projects') }}" class="btn btn-sm btn-outline-primary">View All Projects</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Recent Inspections</h5>
+                <h2 class="fw-bold text-primary">{{ inspections|length }}</h2>
+                <p class="text-muted">Total inspections conducted</p>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <a href="#recent-inspections" class="btn btn-sm btn-outline-primary">View Details</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title mb-3">Blockchain Verification</h5>
+                <h2 class="fw-bold text-primary">{{ inspections|selectattr('blockchain_tx_hash')|list|length }}</h2>
+                <p class="text-muted">Records secured on blockchain</p>
+            </div>
+            <div class="card-footer bg-transparent border-0">
+                <a href="#" class="btn btn-sm btn-outline-primary">Verification Status</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if user.role in ['admin', 'engineer'] %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <h4 class="fw-bold mb-0">Project Management</h4>
+    <a href="{{ url_for('create_project') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>New Project
+    </a>
+</div>
+{% endif %}
+
+<div class="card border-0 shadow-sm mb-5">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0 fw-bold">Active Projects</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Project Name</th>
+                        <th>Location</th>
+                        <th>Start Date</th>
+                        <th>Status</th>
+                        <th>Inspections</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                    {% if project.status == 'Active' %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('project_detail', project_id=project.id) }}"
+                                class="fw-medium text-decoration-none">
+                                {{ project.name }}
+                            </a>
+                        </td>
+                        <td>{{ project.location }}</td>
+                        <td>{{ project.start_date.strftime('%b %d, %Y') }}</td>
+                        <td>
+                            <span class="badge bg-success">{{ project.status }}</span>
+                        </td>
+                        <td>
+                            {{ project.inspections|length }}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('project_detail', project_id=project.id) }}"
+                                class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye me-1"></i>View
+                            </a>
+                            {% if user.role in ['admin', 'inspector', 'engineer'] %}
+                            <a href="{{ url_for('create_inspection', project_id=project.id) }}"
+                                class="btn btn-sm btn-outline-success">
+                                <i class="fas fa-clipboard-check me-1"></i>Inspect
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="recent-inspections">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h4 class="fw-bold mb-0">Recent Inspections</h4>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0 fw-bold">Latest Inspection Reports</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Project</th>
+                            <th>Inspector</th>
+                            <th>Status</th>
+                            <th>Blockchain Verification</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inspection in inspections[:5] %}
+                        <tr>
+                            <td>{{ inspection.date.strftime('%b %d, %Y') }}</td>
+                            <td>
+                                <a href="{{ url_for('project_detail', project_id=inspection.project_id) }}"
+                                    class="fw-medium text-decoration-none">
+                                    {{ inspection.project.name }}
+                                </a>
+                            </td>
+                            <td>{{ inspection.inspector.username }}</td>
+                            <td>
+                                <span
+                                    class="badge {% if inspection.status == 'Completed' %}bg-success{% else %}bg-warning{% endif %}">
+                                    {{ inspection.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if inspection.blockchain_tx_hash %}
+                                <span class="text-success"><i class="fas fa-check-circle me-1"></i>Verified</span>
+                                {% else %}
+                                <span class="text-warning"><i class="fas fa-clock me-1"></i>Pending</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{{ url_for('inspection_detail', inspection_id=inspection.id) }}"
+                                    class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-file-alt me-1"></i>Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
