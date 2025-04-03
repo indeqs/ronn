@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% block title %}BlockInspect - Blockchain Construction Site Inspection{% endblock %}
+
+{% block content %}
+<section class="hero bg-light py-5 rounded">
+    <div class="container py-4">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-3">Transform Construction Site Inspections</h1>
+                <p class="lead mb-4">Secure, transparent, and tamper-proof site inspections powered by blockchain
+                    technology. Enhance accountability and streamline regulatory compliance.</p>
+                <div class="d-flex gap-3">
+                    <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg">Get Started</a>
+                    <a href="#features" class="btn btn-outline-secondary btn-lg">Learn More</a>
+                </div>
+            </div>
+            <div class="col-lg-6 mt-4 mt-lg-0 text-center">
+                <img src="{{ url_for('static', filename='images/blockchain-inspection.svg') }}"
+                    alt="Blockchain Inspection" class="img-fluid" style="max-height: 400px;">
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="features" class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Key Features</h2>
+            <p class="text-muted">Revolutionizing construction site inspections with blockchain technology</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div
+                            class="feature-icon bg-primary bg-opacity-10 text-primary rounded-circle mb-3 p-3 d-inline-flex">
+                            <i class="fas fa-shield-alt fa-2x"></i>
+                        </div>
+                        <h5 class="card-title">Enhanced Security</h5>
+                        <p class="card-text">SHA256 hashing ensures data integrity. Records cannot be altered once
+                            submitted to the blockchain.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div
+                            class="feature-icon bg-primary bg-opacity-10 text-primary rounded-circle mb-3 p-3 d-inline-flex">
+                            <i class="fas fa-eye fa-2x"></i>
+                        </div>
+                        <h5 class="card-title">Full Transparency</h5>
+                        <p class="card-text">All stakeholders have access to inspection data in real-time, promoting
+                            accountability and trust.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div
+                            class="feature-icon bg-primary bg-opacity-10 text-primary rounded-circle mb-3 p-3 d-inline-flex">
+                            <i class="fas fa-file-alt fa-2x"></i>
+                        </div>
+                        <h5 class="card-title">Automated Reports</h5>
+                        <p class="card-text">Generate comprehensive reports with verified integrity for regulatory
+                            compliance and project documentation.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div
+                            class="feature-icon bg-primary bg-opacity-10 text-primary rounded-circle mb-3 p-3 d-inline-flex">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                        <h5 class="card-title">Real-time Updates</h5>
+                        <p class="card-text">Access the latest inspection data immediately, enabling quick
+                            decision-making and issue resolution.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div
+                            class="feature-icon bg-primary bg-opacity-10 text-primary rounded-circle mb-3 p-3 d-inline-flex">
+                            <i class="fas fa-user-shield fa-2x"></i>
+                        </div>
+                        <h5 class="card-title">Role-Based Access</h5>
+                        <p class="card-text">Secure permissions system ensures appropriate access levels for different
+                            stakeholders.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div
+                            class="feature-icon bg-primary bg-opacity-10 text-primary rounded-circle mb-3 p-3 d-inline-flex">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                        <h5 class="card-title">Verification Tools</h5>
+                        <p class="card-text">Built-in tools to verify the authenticity and integrity of all inspection
+                            records.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="how-it-works" class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">How It Works</h2>
+            <p class="text-muted">Simple, secure, and transparent inspection process</p>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-point bg-primary"></div>
+                        <div class="timeline-content shadow-sm rounded p-4 bg-white">
+                            <h5>1. Record Inspection</h5>
+                            <p>Project engineers document site findings through our easy-to-use interface.</p>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-point bg-primary"></div>
+                        <div class="timeline-content shadow-sm rounded p-4 bg-white">
+                            <h5>2. Secure with Blockchain</h5>
+                            <p>Inspection data is hashed using SHA256 and permanently recorded on the blockchain.</p>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-point bg-primary"></div>
+                        <div class="timeline-content shadow-sm rounded p-4 bg-white">
+                            <h5>3. Stakeholder Access</h5>
+                            <p>Authorized stakeholders can view inspection results with verification of data integrity.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="timeline-item">
+                        <div class="timeline-point bg-primary"></div>
+                        <div class="timeline-content shadow-sm rounded p-4 bg-white">
+                            <h5>4. Generate Reports</h5>
+                            <p>Comprehensive reports can be generated for compliance and documentation needs.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="about" class="py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-4 mb-lg-0">
+                <img src="{{ url_for('static', filename='images/about-us.svg') }}" alt="About BlockInspect"
+                    class="img-fluid rounded">
+            </div>
+            <div class="col-lg-6">
+                <h2 class="fw-bold mb-4">About BlockInspect</h2>
+                <p class="mb-4">BlockInspect was developed to address the inefficiencies, lack of transparency, and
+                    vulnerabilities to fraud in traditional construction site inspection processes.</p>
+                <p class="mb-4">By leveraging blockchain technology, we provide a secure, transparent, and tamper-proof
+                    system for documenting and verifying construction site inspections.</p>
+                <p>Our mission is to transform the construction industry by promoting accountability, streamlining
+                    processes, and ensuring regulatory compliance through innovative technology solutions.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="cta" class="bg-primary text-white py-5 rounded">
+    <div class="container text-center py-3">
+        <h2 class="fw-bold mb-3">Ready to Transform Your Construction Inspections?</h2>
+        <p class="lead mb-4">Join the growing number of construction professionals using blockchain technology to
+            enhance transparency and accountability.</p>
+        <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">Get Started Today</a>
+    </div>
+</section>
+
+<section id="contact" class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <h2 class="fw-bold mb-4">Contact Us</h2>
+                <p class="mb-5">Have questions about BlockInspect? Our team is here to help.</p>
+            </div>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <form>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" placeholder="Your Name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="email" class="form-control" placeholder="Your Email" required>
+                        </div>
+                        <div class="col-12">
+                            <input type="text" class="form-control" placeholder="Subject">
+                        </div>
+                        <div class="col-12">
+                            <textarea class="form-control" rows="5" placeholder="Your Message" required></textarea>
+                        </div>
+                        <div class="col-12 text-center">
+                            <button type="submit" class="btn btn-primary">Send Message</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timeline {
+        position: relative;
+        padding: 0;
+        list-style: none;
+    }
+
+    .timeline:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 20px;
+        width: 2px;
+        background-color: #e9ecef;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 30px;
+        padding-left: 60px;
+    }
+
+    .timeline-point {
+        position: absolute;
+        left: 10px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        margin-top: 15px;
+    }
+
+    .feature-icon {
+        width: 70px;
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .hero {
+        position: relative;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}
