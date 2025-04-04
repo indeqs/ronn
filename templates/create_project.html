@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Project - BlockInspect{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-5">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow border-0">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <i class="fas fa-plus-circle fa-3x text-primary mb-3"></i>
+                    <h3 class="fw-bold">Create New Project</h3>
+                    <p class="text-muted">Fill in the details below to create a new project</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('create_project') }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Project Name</label>
+                        <input type="text" class="form-control" id="name" name="name" placeholder="Enter project name"
+                            required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="4"
+                            placeholder="Enter project description" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="location" class="form-label">Location</label>
+                        <input type="text" class="form-control" id="location" name="location"
+                            placeholder="Enter project location" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="end_date" class="form-label">End Date (Optional)</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2">Create Project</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

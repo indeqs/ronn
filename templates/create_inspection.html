@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Inspection - BlockInspect{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-5">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow border-0">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <i class="fas fa-clipboard-check fa-3x text-primary mb-3"></i>
+                    <h3 class="fw-bold">Create New Inspection</h3>
+                    <p class="text-muted">Fill in the details below to create a new inspection for the project</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('create_inspection', project_id=project.id) }}">
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Inspection Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="4"
+                            placeholder="Enter inspection notes" required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="structural" class="form-label">Structural Status</label>
+                        <select class="form-select" id="structural" name="structural" required>
+                            <option value="" selected disabled>Select structural status</option>
+                            <option value="Pass">Pass</option>
+                            <option value="Pass with Comments">Pass with Comments</option>
+                            <option value="Fail">Fail</option>
+                            <option value="Not Applicable">Not Applicable</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="electrical" class="form-label">Electrical Status</label>
+                        <select class="form-select" id="electrical" name="electrical" required>
+                            <option value="" selected disabled>Select electrical status</option>
+                            <option value="Pass">Pass</option>
+                            <option value="Pass with Comments">Pass with Comments</option>
+                            <option value="Fail">Fail</option>
+                            <option value="Not Applicable">Not Applicable</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="plumbing" class="form-label">Plumbing Status</label>
+                        <select class="form-select" id="plumbing" name="plumbing" required>
+                            <option value="" selected disabled>Select plumbing status</option>
+                            <option value="Pass">Pass</option>
+                            <option value="Pass with Comments">Pass with Comments</option>
+                            <option value="Fail">Fail</option>
+                            <option value="Not Applicable">Not Applicable</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="safety" class="form-label">Safety Status</label>
+                        <select class="form-select" id="safety" name="safety" required>
+                            <option value="" selected disabled>Select safety status</option>
+                            <option value="Pass">Pass</option>
+                            <option value="Pass with Comments">Pass with Comments</option>
+                            <option value="Fail">Fail</option>
+                            <option value="Not Applicable">Not Applicable</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2">Submit Inspection</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
