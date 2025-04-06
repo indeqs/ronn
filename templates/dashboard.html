@@ -145,12 +145,12 @@
                         <tr>
                             <td>{{ inspection.date.strftime('%b %d, %Y') }}</td>
                             <td>
-                                <a href="{{ url_for('project_detail', project_id=inspection.project_id) }}"
+                                <a href="{{ url_for('project_detail', project_id=inspection.project.id) }}"
                                     class="fw-medium text-decoration-none">
                                     {{ inspection.project.name }}
                                 </a>
                             </td>
-                            <td>{{ inspection.inspector.username }}</td>
+                            <td>{{ inspection.inspector.username if inspection.inspector else 'Unknown' }}</td>
                             <td>
                                 <span
                                     class="badge {% if inspection.status == 'Completed' %}bg-success{% else %}bg-warning{% endif %}">

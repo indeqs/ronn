@@ -157,10 +157,14 @@ def dashboard():
     )
     inspections = Inspection.query.all()
 
+    # Add the related project and inspector to each inspection
+    for inspection in inspections:
+        inspection.project = Project.query.get(inspection.project_id)
+        inspection.inspector = User.query.get(inspection.inspector_id)
+
     return render_template(
         "dashboard.html", user=user, projects=projects, inspections=inspections
     )
-
 
 @app.route("/projects")
 @login_required
@@ -179,9 +183,12 @@ def projects_list():
 def project_detail(project_id):
     project = Project.query.get_or_404(project_id)
     inspections = Inspection.query.filter_by(project_id=project.id).all()
-    users = {
-        user.id: user for user in User.query.all()
-    }  # Fetch all users and map them by their IDs
+    users = {user.id: user for user in User.query.all()}  # Fetch all users and map them by their IDs
+
+    # Add the inspector object to each inspection
+    for inspection in inspections:
+        inspection.inspector = users.get(inspection.inspector_id)
+
     return render_template(
         "project_detail.html", project=project, inspections=inspections, users=users
     )
@@ -214,6 +221,21 @@ def create_project():
         return redirect(url_for("project_detail", project_id=new_project.id))
 
     return render_template("create_project.html")
+
+
+@app.route("/inspections/<int:inspection_id>")
+@login_required
+def inspection_detail(inspection_id):
+    inspection = Inspection.query.get_or_404(inspection_id)
+    project = Project.query.get(inspection.project_id)
+    inspector = User.query.get(inspection.inspector_id)
+
+    return render_template(
+        "inspection_detail.html",
+        inspection=inspection,
+        project=project,
+        inspector=inspector,
+    )
 
 
 @app.route("/create_inspection/<int:project_id>", methods=["GET", "POST"])

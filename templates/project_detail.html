@@ -29,8 +29,8 @@
             </div>
             <div class="col-md-4">
                 <h6>Dates</h6>
-                <p><i class="fas fa-calendar-alt me-2 text-muted"></i>Start: {{ project.start_date.strftime('%b %d,
-                    %Y') }}</p>
+                <p><i class="fas fa-calendar-alt me-2 text-muted"></i>Start: {{ project.start_date.strftime('%b %d, %Y')
+                    }}</p>
                 <p>
                     <i class="fas fa-calendar-check me-2 text-muted"></i>End:
                     {% if project.end_date %}
@@ -76,7 +76,7 @@
                     {% for inspection in inspections %}
                     <tr>
                         <td>{{ inspection.date.strftime('%b %d, %Y %I:%M %p') }}</td>
-                        <td>{{ inspection.inspector.username }}</td>
+                        <td>{{ inspection.inspector.username if inspection.inspector else 'Unknown' }}</td>
                         <td>
                             <span
                                 class="badge {% if inspection.status == 'Completed' %}bg-success{% else %}bg-warning{% endif %}">

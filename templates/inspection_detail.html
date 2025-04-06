@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Inspection Details - BlockInspect{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center my-5">
+    <div class="col-md-8">
+        <div class="card shadow border-0">
+            <div class="card-body p-5">
+                <h3 class="fw-bold mb-4">Inspection Details</h3>
+                <p><strong>Project:</strong> {{ project.name }}</p>
+                <p><strong>Inspector:</strong> {{ inspector.username if inspector else 'Unknown' }}</p>
+                <p><strong>Date:</strong> {{ inspection.date.strftime('%b %d, %Y %I:%M %p') }}</p>
+                <p><strong>Status:</strong> {{ inspection.status }}</p>
+                <p><strong>Notes:</strong> {{ inspection.notes }}</p>
+                <p><strong>Blockchain Verification:</strong>
+                    {% if inspection.blockchain_tx_hash %}
+                    <span class="text-success"><i class="fas fa-check-circle me-1"></i>Verified</span>
+                    <br>
+                    <code>{{ inspection.blockchain_tx_hash }}</code>
+                    {% else %}
+                    <span class="text-warning"><i class="fas fa-clock me-1"></i>Pending</span>
+                    {% endif %}
+                </p>
+                <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn btn-primary mt-3">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Project
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
