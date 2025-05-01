@@ -1,0 +1,36 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Instance folder (Flask-specific)
+instance/
+
+# SQLite database files
+*.db
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Virtual environment
+.venv/
+.env/
+venv/
+env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE-specific files
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,64 @@
+{% extends "_base.html" %} {# Assuming you have a base template #}
+
+{% block title %}Verify Email - BlockInspect{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="card-title text-center mb-4">Verify Your Email</h2>
+                    <p class="text-center text-muted mb-4">
+                        A verification code has been sent to <strong>{{ email }}</strong>.
+                        Please enter the code below to activate your account. The code is valid for {{
+                        config.OTP_EXPIRY_MINUTES }} minutes.
+                    </p>
+
+                    {% include '_flash_messages.html' %} {# Include flash messages partial #}
+
+                    <form method="POST" action="{{ url_for('verify_otp') }}" id="otp-form">
+                        <div class="mb-3">
+                            <label for="otp" class="form-label">Verification Code (OTP)</label>
+                            <input type="text" class="form-control form-control-lg" id="otp" name="otp" required
+                                autofocus maxlength="6" pattern="\d{6}" title="Enter the 6-digit code">
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">Verify Account</button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <form method="POST" action="{{ url_for('resend_otp') }}" style="display: inline;">
+                            <button type="submit" class="btn btn-link p-0">Didn't receive the code? Resend OTP</button>
+                        </form>
+                    </div>
+                    <div class="text-center mt-2">
+                        <a href="{{ url_for('register') }}">Register with a different email?</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Optional: Add JS for focusing or input masking -->
+<script>
+    // Auto-focus the OTP input field when the page loads
+    document.addEventListener('DOMContentLoaded', function () {
+        const otpInput = document.getElementById('otp');
+        if (otpInput) {
+            otpInput.focus();
+        }
+        // Simple input restriction for digits only (optional, use pattern attr too)
+        otpInput.addEventListener('input', function (e) {
+            this.value = this.value.replace(/\D/g, '');
+        });
+    });
+</script>
+{% endblock %}

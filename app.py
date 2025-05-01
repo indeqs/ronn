@@ -1,9 +1,14 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from dotenv import load_dotenv
+load_dotenv()
+
+import os
+from flask import Flask, render_template, request, redirect, url_for, flash, session, current_app
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 import secrets
+from utils.email_sender import generate_verification_code, send_verification_code
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -11,6 +16,13 @@ app.secret_key = secrets.token_hex(16)
 # Database configuration
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///blockinspect.db"  # SQLite database
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# --- Email Configuration (Use Environment Variables in Production!) ---
+app.config["EMAIL_USERNAME"] = os.environ.get("EMAIL_USER") # Replace or set env var
+app.config["EMAIL_PASSWORD"] = os.environ.get("EMAIL_PASS") # Replace or set env var (Use App Password for Gmail)
+app.config["SMTP_SERVER"] = os.environ.get("SMTP_SERV")
+app.config["SMTP_PORT"] = int(os.environ.get("SMTP_PORT")) # Ensure it's an int
+app.config["OTP_EXPIRY_MINUTES"] = 10 # OTP validity duration
 
 # Initialize the database
 db = SQLAlchemy(app)
@@ -23,6 +35,10 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), nullable=False)
+    # New fields for OTP verification
+    email_verified = db.Column(db.Boolean, default=False, nullable=False)
+    otp_code = db.Column(db.String(6), nullable=True) # Store the OTP
+    otp_expiry = db.Column(db.DateTime, nullable=True) # Store OTP expiry time
 
 
 class Project(db.Model):
@@ -58,8 +74,13 @@ def login_required(f):
         if "user_id" not in session:
             flash("Please login to access this page", "warning")
             return redirect(url_for("login"))
+        # Optional: Check if user still exists and is verified
+        user = User.query.get(session.get("user_id"))
+        if not user or not user.email_verified:
+             flash("Please complete email verification or login again.", "warning")
+             session.clear() # Log them out if not verified
+             return redirect(url_for("login"))
         return f(*args, **kwargs)
-
     return decorated_function
 
 
@@ -72,13 +93,15 @@ def role_required(*roles):
                 return redirect(url_for("login"))
 
             user = User.query.get(session["user_id"])
-            if not user or user.role not in roles:
-                flash("You do not have permission to access this page", "danger")
+             # Check if user exists, is verified, and has the role
+            if not user or not user.email_verified or user.role not in roles:
+                flash("You do not have permission to access this page or need to verify your email.", "danger")
+                # Decide where to redirect - dashboard or login?
+                # If they are logged in but wrong role, dashboard is fine.
+                # If not verified, maybe login is better. Let's stick to dashboard for simplicity now.
                 return redirect(url_for("dashboard"))
             return f(*args, **kwargs)
-
         return decorated_function
-
     return decorator
 
 
@@ -94,28 +117,159 @@ def register():
         username = request.form.get("username")
         email = request.form.get("email")
         password = request.form.get("password")
-        role = request.form.get("role")
+        role = request.form.get("role") # Ensure role is selected in the form
+
+        # Input validation (basic)
+        if not all([username, email, password, role]):
+             flash("All fields are required.", "danger")
+             return render_template("register.html")
+        if role not in ['engineer', 'inspector', 'admin']: # Validate role
+             flash("Invalid role selected.", "danger")
+             return render_template("register.html")
 
         # Check if username or email already exists
-        if User.query.filter_by(username=username).first():
-            flash("Username already exists", "danger")
-            return render_template("register.html")
-        if User.query.filter_by(email=email).first():
-            flash("Email already exists", "danger")
+        existing_user = User.query.filter(
+            (User.username == username) | (User.email == email)
+        ).first()
+        if existing_user:
+            if existing_user.username == username:
+                flash("Username already exists", "danger")
+            if existing_user.email == email:
+                flash("Email already registered", "danger")
             return render_template("register.html")
 
-        # Create new user
+        # Generate OTP and expiry
+        otp = generate_verification_code()
+        otp_expiry = datetime.utcnow() + timedelta(minutes=app.config['OTP_EXPIRY_MINUTES'])
+
+        # Create new user (but don't mark as verified yet)
         hashed_password = generate_password_hash(password)
         new_user = User(
-            username=username, email=email, password=hashed_password, role=role
+            username=username,
+            email=email,
+            password=hashed_password,
+            role=role,
+            email_verified=False, # Important: Start as unverified
+            otp_code=otp,
+            otp_expiry=otp_expiry
         )
-        db.session.add(new_user)
-        db.session.commit()
 
-        flash("Registration successful! Please login.", "success")
-        return redirect(url_for("login"))
+        # Try sending the verification email *before* saving the user
+        try:
+            # Need app context for email sending
+            with app.app_context():
+                email_sent = send_verification_code(email, otp)
+
+            if not email_sent:
+                # Log the error internally if possible (already done in send_email)
+                flash("Could not send verification email. Please check the email address or contact support.", "danger")
+                # Don't save the user if email fails critically
+                return render_template("register.html")
+
+            # Email sent successfully, now save the user
+            db.session.add(new_user)
+            db.session.commit()
+
+            # Store email in session to know who is verifying
+            session['verification_email'] = email
+
+            flash(f"Registration successful! Please check your email ({email}) for a verification code.", "info")
+            return redirect(url_for("verify_otp")) # Redirect to OTP verification page
+
+        except Exception as e:
+            db.session.rollback() # Rollback DB changes if any error occurs
+            current_app.logger.error(f"Error during registration for {email}: {e}")
+            flash("An unexpected error occurred during registration. Please try again.", "danger")
+            return render_template("register.html")
+
 
     return render_template("register.html")
+
+@app.route("/verify_otp", methods=["GET", "POST"])
+def verify_otp():
+    # Check if we know which email to verify
+    email_to_verify = session.get('verification_email')
+    if not email_to_verify:
+        flash("Verification session expired or invalid. Please register or login again.", "warning")
+        return redirect(url_for('register'))
+
+    user = User.query.filter_by(email=email_to_verify, email_verified=False).first()
+
+    if not user:
+        flash("User not found or already verified. Try logging in.", "warning")
+        session.pop('verification_email', None) # Clean up session
+        return redirect(url_for('login'))
+
+    if request.method == "POST":
+        submitted_otp = request.form.get("otp")
+
+        if not submitted_otp:
+            flash("Please enter the OTP code.", "warning")
+            return render_template("verify_otp.html", email=email_to_verify)
+
+        # Check OTP correctness and expiry
+        if user.otp_code == submitted_otp and user.otp_expiry > datetime.utcnow():
+            # OTP is correct and not expired
+            user.email_verified = True
+            user.otp_code = None # Clear OTP fields after successful verification
+            user.otp_expiry = None
+            db.session.commit()
+
+            session.pop('verification_email', None) # Clean up session
+            flash("Email verified successfully! You can now login.", "success")
+            return redirect(url_for("login"))
+        elif user.otp_expiry <= datetime.utcnow():
+            flash("OTP has expired. Please request a new one.", "danger")
+            # Optionally redirect to a resend route or show resend button
+            return render_template("verify_otp.html", email=email_to_verify, show_resend=True) # Add show_resend flag
+        else:
+            flash("Invalid OTP code. Please try again.", "danger")
+            return render_template("verify_otp.html", email=email_to_verify)
+
+    # GET request
+    return render_template("verify_otp.html", email=email_to_verify)
+
+
+@app.route("/resend_otp", methods=["POST"])
+def resend_otp():
+    email_to_verify = session.get('verification_email')
+    if not email_to_verify:
+        flash("Verification session expired. Please register or login again.", "warning")
+        return redirect(url_for('register'))
+
+    user = User.query.filter_by(email=email_to_verify, email_verified=False).first()
+
+    if not user:
+        flash("User not found or already verified.", "warning")
+        session.pop('verification_email', None)
+        return redirect(url_for('login'))
+
+    # Generate new OTP and update expiry
+    otp = generate_verification_code()
+    otp_expiry = datetime.utcnow() + timedelta(minutes=app.config['OTP_EXPIRY_MINUTES'])
+    user.otp_code = otp
+    user.otp_expiry = otp_expiry
+
+    try:
+         # Need app context for email sending
+        with app.app_context():
+            email_sent = send_verification_code(user.email, otp)
+
+        if not email_sent:
+            flash("Could not resend verification email. Please contact support.", "danger")
+            # Don't commit the new OTP if sending failed
+            return redirect(url_for('verify_otp')) # Stay on verify page
+
+        # Commit the new OTP details only if email sent successfully
+        db.session.commit()
+        flash(f"A new verification code has been sent to {user.email}.", "info")
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error resending OTP for {user.email}: {e}")
+        flash("An error occurred while resending the OTP.", "danger")
+
+    return redirect(url_for('verify_otp'))
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -124,18 +278,39 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
 
+        if not username or not password:
+             flash("Username and password are required.", "warning")
+             return render_template("login.html")
+
         # Find user by username
         user = User.query.filter_by(username=username).first()
 
-        if user and check_password_hash(user.password, password):
-            session["user_id"] = user.id
-            session["username"] = user.username
-            session["role"] = user.role
-            flash("Login successful!", "success")
-            return redirect(url_for("dashboard"))
-        else:
-            flash("Invalid username or password", "danger")
+        if user:
+             # Check if email is verified FIRST
+             if not user.email_verified:
+                 flash("Your email is not verified. Please check your inbox for the verification code or request a new one.", "warning")
+                 # Store email in session so verify_otp page knows who it is
+                 session['verification_email'] = user.email
+                 return redirect(url_for('verify_otp')) # Send them to verify
 
+             # Now check password
+             if check_password_hash(user.password, password):
+                 # Password correct, log them in
+                 session["user_id"] = user.id
+                 session["username"] = user.username
+                 session["role"] = user.role
+                 # Clear any lingering verification email from session
+                 session.pop('verification_email', None)
+                 flash("Login successful!", "success")
+                 return redirect(url_for("dashboard"))
+             else:
+                 # Incorrect password
+                 flash("Invalid username or password", "danger")
+        else:
+             # User not found
+             flash("Invalid username or password", "danger")
+
+    # GET request
     return render_template("login.html")
 
 
