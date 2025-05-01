@@ -1,0 +1,31 @@
+{% extends 'base.html' %} {# Or create a completely separate base #}
+
+{% block title %}Admin Panel - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    {# Admin Sidebar Navigation #}
+    <div class="col-md-3">
+        <div class="list-group mb-4 shadow-sm">
+            <a href="{{ url_for('admin_dashboard') }}"
+                class="list-group-item list-group-item-action {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                <i class="fas fa-tachometer-alt fa-fw me-2"></i>Admin Dashboard
+            </a>
+            <a href="{{ url_for('admin_users') }}"
+                class="list-group-item list-group-item-action {% if request.endpoint == 'admin_users' %}active{% endif %}">
+                <i class="fas fa-users fa-fw me-2"></i>Manage Users
+            </a>
+            <a href="{{ url_for('admin_projects') }}"
+                class="list-group-item list-group-item-action {% if request.endpoint == 'admin_projects' %}active{% endif %}">
+                <i class="fas fa-project-diagram fa-fw me-2"></i>View Projects
+            </a>
+            {# Add more admin links as needed #}
+        </div>
+    </div>
+
+    {# Main Admin Content Area #}
+    <div class="col-md-9">
+        {% block admin_content %}{% endblock %} {# Specific admin page content goes here #}
+    </div>
+</div>
+{% endblock %}

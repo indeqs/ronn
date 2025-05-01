@@ -4,67 +4,99 @@
 
 {% block content %}
 <div class="row justify-content-center my-5">
-    <div class="col-md-8 col-lg-6">
+    <div class="col-md-8 col-lg-7">
         <div class="card shadow border-0">
-            <div class="card-body p-5">
+            <div class="card-header bg-light py-3">
+                <h5 class="mb-0">New Inspection for: <span class="text-primary fw-bold">{{ project.name }}</span></h5>
+            </div>
+            <div class="card-body p-4 p-md-5">
                 <div class="text-center mb-4">
-                    <i class="fas fa-clipboard-check fa-3x text-primary mb-3"></i>
-                    <h3 class="fw-bold">Create New Inspection</h3>
-                    <p class="text-muted">Fill in the details below to create a new inspection for the project</p>
+                    <i class="fas fa-clipboard-list fa-3x text-primary mb-3"></i>
+                    <h3 class="fw-bold">Record Inspection Progress</h3>
+                    <p class="text-muted">Enter details and completion percentages (0-100).</p> {# Added range hint #}
                 </div>
 
                 <form method="POST" action="{{ url_for('create_inspection', project_id=project.id) }}">
-                    <div class="mb-3">
-                        <label for="notes" class="form-label">Inspection Notes</label>
+                    <div class="mb-4">
+                        <label for="notes" class="form-label">Inspection Notes <span
+                                class="text-danger">*</span></label>
+                        {# Use request_form to repopulate on error #}
                         <textarea class="form-control" id="notes" name="notes" rows="4"
-                            placeholder="Enter inspection notes" required></textarea>
+                            placeholder="Observations, issues found, next steps..."
+                            required>{{ request_form.get('notes', '') }}</textarea>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="structural" class="form-label">Structural Status</label>
-                        <select class="form-select" id="structural" name="structural" required>
-                            <option value="" selected disabled>Select structural status</option>
-                            <option value="Pass">Pass</option>
-                            <option value="Pass with Comments">Pass with Comments</option>
-                            <option value="Fail">Fail</option>
-                            <option value="Not Applicable">Not Applicable</option>
+                    <h5 class="mb-3">Completion Status (%)</h5>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="structural_completion" class="form-label">Structural (%)</label>
+                            <div class="input-group">
+                                {# Use request_form to repopulate on error #}
+                                <input type="number" class="form-control" id="structural_completion"
+                                    name="structural_completion" min="0" max="100" placeholder="0-100"
+                                    value="{{ request_form.get('structural_completion', '') }}">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="electrical_completion" class="form-label">Electrical (%)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="electrical_completion"
+                                    name="electrical_completion" min="0" max="100" placeholder="0-100"
+                                    value="{{ request_form.get('electrical_completion', '') }}">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="plumbing_completion" class="form-label">Plumbing (%)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="plumbing_completion"
+                                    name="plumbing_completion" min="0" max="100" placeholder="0-100"
+                                    value="{{ request_form.get('plumbing_completion', '') }}">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="safety_compliance" class="form-label">Safety Compliance (%)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="safety_compliance"
+                                    name="safety_compliance" min="0" max="100" placeholder="0-100"
+                                    value="{{ request_form.get('safety_compliance', '') }}">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="status" class="form-label">Overall Inspection Status</label>
+                        <select class="form-select" id="status" name="status">
+                            {# Use request_form to repopulate on error, default to 'Recorded' if not present #}
+                            <option value="Recorded" {% if request_form.get('status', 'Recorded' )=='Recorded'
+                                %}selected{% endif %}>Recorded</option>
+                            <option value="Needs Review" {% if request_form.get('status')=='Needs Review' %}selected{%
+                                endif %}>Needs Review</option>
+                            <option value="Action Required" {% if request_form.get('status')=='Action Required'
+                                %}selected{% endif %}>Action Required</option>
+                            <option value="Passed" {% if request_form.get('status')=='Passed' %}selected{% endif %}>
+                                Passed</option>
                         </select>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="electrical" class="form-label">Electrical Status</label>
-                        <select class="form-select" id="electrical" name="electrical" required>
-                            <option value="" selected disabled>Select electrical status</option>
-                            <option value="Pass">Pass</option>
-                            <option value="Pass with Comments">Pass with Comments</option>
-                            <option value="Fail">Fail</option>
-                            <option value="Not Applicable">Not Applicable</option>
-                        </select>
-                    </div>
 
-                    <div class="mb-3">
-                        <label for="plumbing" class="form-label">Plumbing Status</label>
-                        <select class="form-select" id="plumbing" name="plumbing" required>
-                            <option value="" selected disabled>Select plumbing status</option>
-                            <option value="Pass">Pass</option>
-                            <option value="Pass with Comments">Pass with Comments</option>
-                            <option value="Fail">Fail</option>
-                            <option value="Not Applicable">Not Applicable</option>
-                        </select>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg py-2">Submit Inspection</button>
                     </div>
-
-                    <div class="mb-3">
-                        <label for="safety" class="form-label">Safety Status</label>
-                        <select class="form-select" id="safety" name="safety" required>
-                            <option value="" selected disabled>Select safety status</option>
-                            <option value="Pass">Pass</option>
-                            <option value="Pass with Comments">Pass with Comments</option>
-                            <option value="Fail">Fail</option>
-                            <option value="Not Applicable">Not Applicable</option>
-                        </select>
+                    <div class="text-center mt-3">
+                        {# --- Updated Cancel Button --- #}
+                        <a href="{{ url_for('project_detail', project_id=project.id) }}"
+                            class="btn btn-sm btn-outline-danger"> {# Changed class #}
+                            Cancel
+                        </a>
                     </div>
-
-                    <button type="submit" class="btn btn-primary w-100 py-2">Submit Inspection</button>
                 </form>
             </div>
         </div>

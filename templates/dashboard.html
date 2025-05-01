@@ -2,70 +2,125 @@
 
 {% block title %}Dashboard - BlockInspect{% endblock %}
 
+{% block extra_css %}
+{# Basic CSS for Floating Action Button (FAB) #}
+<style>
+    .fab {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        background-color: var(--bs-primary);
+        /* Use Bootstrap primary color */
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 24px;
+        line-height: 60px;
+        /* Vertically center icon */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        transition: background-color 0.3s ease;
+    }
+
+    .fab:hover {
+        background-color: var(--bs-primary-dark);
+        /* Darker shade on hover */
+        color: white;
+    }
+
+    .fab i {
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+
 {% block content %}
+{# --- Floating Action Button for Engineer/Admin --- #}
+{% if current_user.role in ['admin', 'engineer'] %}
+<a href="{{ url_for('create_project') }}" class="fab" data-bs-toggle="tooltip" data-bs-placement="left"
+    title="Create New Project">
+    <i class="fas fa-plus"></i>
+</a>
+{% endif %}
+
 <div class="row mb-4 align-items-center">
     <div class="col">
         <h2 class="fw-bold">Dashboard</h2>
-        <p class="text-muted mb-0">Welcome back, {{ user.username }}</p>
+        <p class="text-muted mb-0">Welcome back, {{ current_user.username }}</p> {# Use current_user #}
     </div>
     <div class="col-auto">
-        <div class="badge bg-primary">{{ user.role|capitalize }}</div>
+        <div class="badge bg-info text-dark">{{ current_user.role|capitalize }}</div> {# Changed badge color #}
     </div>
 </div>
 
+{# --- Summary Cards --- #}
 <div class="row mb-4">
     <div class="col-md-4 mb-3">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <h5 class="card-title mb-3">Active Projects</h5>
-                <h2 class="fw-bold text-primary">{{ projects|selectattr('status', 'equalto', 'Active')|list|length }}
-                </h2>
-                <p class="text-muted">Total active construction projects</p>
+            <div class="card-body d-flex align-items-center">
+                <i class="fas fa-project-diagram fa-3x text-primary me-3"></i>
+                <div>
+                    <h5 class="card-title mb-1">Active Projects</h5>
+                    {# Filter projects list passed to template #}
+                    <h2 class="fw-bold text-primary mb-0">{{ projects|selectattr('status', 'equalto',
+                        'Active')|list|length }}</h2>
+                </div>
             </div>
-            <div class="card-footer bg-transparent border-0">
-                <a href="{{ url_for('projects_list') }}" class="btn btn-sm btn-outline-primary">View All Projects</a>
+            {% if current_user.role in ['admin', 'engineer'] %}
+            <div class="card-footer bg-transparent border-0 text-end">
+                <a href="{{ url_for('projects_list') }}" class="btn btn-sm btn-outline-primary">View Projects</a>
             </div>
+            {% endif %}
         </div>
     </div>
     <div class="col-md-4 mb-3">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <h5 class="card-title mb-3">Recent Inspections</h5>
-                <h2 class="fw-bold text-primary">{{ inspections|length }}</h2>
-                <p class="text-muted">Total inspections conducted</p>
+            <div class="card-body d-flex align-items-center">
+                <i class="fas fa-clipboard-check fa-3x text-success me-3"></i>
+                <div>
+                    <h5 class="card-title mb-1">Recent Inspections</h5>
+                    <h2 class="fw-bold text-success mb-0">{{ inspections|length }}</h2> {# Shows count of recent
+                    inspections passed #}
+                </div>
             </div>
-            <div class="card-footer bg-transparent border-0">
-                <a href="#recent-inspections" class="btn btn-sm btn-outline-primary">View Details</a>
+            {% if inspections %}
+            <div class="card-footer bg-transparent border-0 text-end">
+                <a href="#recent-inspections" class="btn btn-sm btn-outline-success">View Details</a>
             </div>
+            {% endif %}
         </div>
     </div>
     <div class="col-md-4 mb-3">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <h5 class="card-title mb-3">Blockchain Verification</h5>
-                <h2 class="fw-bold text-primary">{{ inspections|selectattr('blockchain_tx_hash')|list|length }}</h2>
-                <p class="text-muted">Records secured on blockchain</p>
+            <div class="card-body d-flex align-items-center">
+                <i class="fas fa-shield-alt fa-3x text-info me-3"></i>
+                <div>
+                    <h5 class="card-title mb-1">Blockchain Verified</h5>
+                    {# Count inspections with a hash #}
+                    <h2 class="fw-bold text-info mb-0">{{ inspections|selectattr('blockchain_tx_hash')|list|length }}
+                    </h2>
+                </div>
             </div>
-            <div class="card-footer bg-transparent border-0">
-                <a href="#" class="btn btn-sm btn-outline-primary">Verification Status</a>
+            <div class="card-footer bg-transparent border-0 text-end">
+                <a href="#" class="btn btn-sm btn-outline-info disabled">Learn More</a> {# Placeholder link #}
             </div>
         </div>
     </div>
 </div>
 
-{% if user.role in ['admin', 'engineer'] %}
-<div class="d-flex align-items-center justify-content-between mb-4">
-    <h4 class="fw-bold mb-0">Project Management</h4>
-    <a href="{{ url_for('create_project') }}" class="btn btn-primary">
-        <i class="fas fa-plus me-2"></i>New Project
-    </a>
+{# --- Project Management Section (Only if projects exist and user can manage) --- #}
+{% if projects and current_user.role in ['admin', 'engineer'] %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="fw-bold mb-0">My Active Projects</h4>
+    {# Button removed, using FAB now #}
+    {# <a href="{{ url_for('create_project') }}" class="btn btn-primary"><i class="fas fa-plus me-2"></i>New Project</a>
+    #}
 </div>
-{% endif %}
 
 <div class="card border-0 shadow-sm mb-5">
-    <div class="card-header bg-white py-3">
-        <h5 class="mb-0 fw-bold">Active Projects</h5>
-    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -73,60 +128,69 @@
                     <tr>
                         <th>Project Name</th>
                         <th>Location</th>
-                        <th>Start Date</th>
-                        <th>Status</th>
+                        <th>Phase</th> {# Changed from Status #}
                         <th>Inspections</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for project in projects %}
-                    {% if project.status == 'Active' %}
+                    {% for project in projects|selectattr('status', 'equalto', 'Active')|list %}
                     <tr>
                         <td>
                             <a href="{{ url_for('project_detail', project_id=project.id) }}"
-                                class="fw-medium text-decoration-none">
+                                class="fw-medium text-decoration-none link-dark">
                                 {{ project.name }}
                             </a>
+                            <small class="d-block text-muted">{{ project.project_type }}</small>
                         </td>
                         <td>{{ project.location }}</td>
-                        <td>{{ project.start_date.strftime('%b %d, %Y') }}</td>
                         <td>
-                            <span class="badge bg-success">{{ project.status }}</span>
+                            {# Maybe use a phase-specific badge color later #}
+                            <span class="badge bg-secondary">{{ project.phase }}</span>
                         </td>
                         <td>
-                            {{ project.inspections|length }}
+                            <span class="badge bg-light text-dark">{{ project.inspections|length }}</span> {# Use
+                            relationship length #}
                         </td>
                         <td class="text-end">
                             <a href="{{ url_for('project_detail', project_id=project.id) }}"
-                                class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-eye me-1"></i>View
+                                class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="tooltip"
+                                title="View Details">
+                                <i class="fas fa-eye"></i>
                             </a>
-                            {% if user.role in ['admin', 'inspector', 'engineer'] %}
+                            {# Only allow inspect button if project is active #}
+                            {% if project.status == 'Active' %}
                             <a href="{{ url_for('create_inspection', project_id=project.id) }}"
-                                class="btn btn-sm btn-outline-success">
-                                <i class="fas fa-clipboard-check me-1"></i>Inspect
+                                class="btn btn-sm btn-outline-success" data-bs-toggle="tooltip"
+                                title="Create Inspection">
+                                <i class="fas fa-plus-circle"></i>
                             </a>
                             {% endif %}
                         </td>
                     </tr>
-                    {% endif %}
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">No active projects found. <a
+                                href="{{ url_for('create_project') }}">Create one?</a></td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+{% endif %}
 
+
+{# --- Recent Inspections Section --- #}
+{% if inspections %}
 <div id="recent-inspections">
-    <div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
         <h4 class="fw-bold mb-0">Recent Inspections</h4>
+        {# Optional: Link to full inspections list if created #}
     </div>
 
     <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3">
-            <h5 class="mb-0 fw-bold">Latest Inspection Reports</h5>
-        </div>
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -136,38 +200,49 @@
                             <th>Project</th>
                             <th>Inspector</th>
                             <th>Status</th>
-                            <th>Blockchain Verification</th>
+                            <th>Verified</th>
                             <th class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for inspection in inspections[:5] %}
+                        {% for inspection in inspections %} {# Already limited in route #}
                         <tr>
-                            <td>{{ inspection.date.strftime('%b %d, %Y') }}</td>
+                            <td>{{ inspection.date.strftime('%Y-%m-%d %H:%M') }}</td> {# Concise date #}
                             <td>
+                                {% if inspection.project %}
                                 <a href="{{ url_for('project_detail', project_id=inspection.project.id) }}"
-                                    class="fw-medium text-decoration-none">
+                                    class="fw-medium text-decoration-none link-dark">
                                     {{ inspection.project.name }}
                                 </a>
+                                {% else %}
+                                <span class="text-muted">N/A</span>
+                                {% endif %}
                             </td>
-                            <td>{{ inspection.inspector.username if inspection.inspector else 'Unknown' }}</td>
                             <td>
+                                {# Use relationship #}
+                                {{ inspection.inspector.username if inspection.inspector else 'Unknown' }}
+                            </td>
+                            <td>
+                                {# Badge based on inspection status #}
                                 <span
-                                    class="badge {% if inspection.status == 'Completed' %}bg-success{% else %}bg-warning{% endif %}">
+                                    class="badge {% if inspection.status == 'Passed' %}bg-success{% elif inspection.status == 'Action Required' %}bg-danger{% elif inspection.status == 'Needs Review' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
                                     {{ inspection.status }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="text-center">
                                 {% if inspection.blockchain_tx_hash %}
-                                <span class="text-success"><i class="fas fa-check-circle me-1"></i>Verified</span>
+                                <span class="text-success" data-bs-toggle="tooltip" title="Verified on Blockchain"><i
+                                        class="fas fa-check-circle"></i></span>
                                 {% else %}
-                                <span class="text-warning"><i class="fas fa-clock me-1"></i>Pending</span>
+                                <span class="text-muted" data-bs-toggle="tooltip" title="Pending Verification"><i
+                                        class="fas fa-clock"></i></span>
                                 {% endif %}
                             </td>
                             <td class="text-end">
                                 <a href="{{ url_for('inspection_detail', inspection_id=inspection.id) }}"
-                                    class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-file-alt me-1"></i>Details
+                                    class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip"
+                                    title="View Inspection Details">
+                                    <i class="fas fa-file-alt"></i>
                                 </a>
                             </td>
                         </tr>
@@ -178,4 +253,22 @@
         </div>
     </div>
 </div>
+{% else %}
+<div class="text-center text-muted mt-5">
+    <p>No inspection records found.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{# Initialize Bootstrap Tooltips if using them #}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    });
+</script>
 {% endblock %}

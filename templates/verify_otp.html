@@ -1,4 +1,4 @@
-{% extends "_base.html" %} {# Assuming you have a base template #}
+{% extends "base.html" %} {# Assuming you have a base template #}
 
 {% block title %}Verify Email - BlockInspect{% endblock %}
 
@@ -14,8 +14,6 @@
                         Please enter the code below to activate your account. The code is valid for {{
                         config.OTP_EXPIRY_MINUTES }} minutes.
                     </p>
-
-                    {% include '_flash_messages.html' %} {# Include flash messages partial #}
 
                     <form method="POST" action="{{ url_for('verify_otp') }}" id="otp-form">
                         <div class="mb-3">

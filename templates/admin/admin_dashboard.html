@@ -1,0 +1,55 @@
+{% extends 'admin/admin_base.html' %}
+
+{% block admin_content %}
+<h2 class="fw-bold mb-4">Admin Dashboard</h2>
+
+<div class="row g-4">
+    <div class="col-md-6 col-xl-3">
+        <div class="card text-center border-primary shadow-sm">
+            <div class="card-body">
+                <i class="fas fa-users fa-3x text-primary mb-2"></i>
+                <h3 class="card-title fw-bold">{{ user_count }}</h3>
+                <p class="card-text text-muted">Total Users</p>
+            </div>
+            <a href="{{ url_for('admin_users')}}" class="card-footer bg-primary text-white text-decoration-none">View
+                Details <i class="fas fa-arrow-circle-right ms-1"></i></a>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card text-center border-success shadow-sm">
+            <div class="card-body">
+                <i class="fas fa-project-diagram fa-3x text-success mb-2"></i>
+                <h3 class="card-title fw-bold">{{ project_count }}</h3>
+                <p class="card-text text-muted">Total Projects</p>
+            </div>
+            <a href="{{ url_for('admin_projects')}}" class="card-footer bg-success text-white text-decoration-none">View
+                Details <i class="fas fa-arrow-circle-right ms-1"></i></a>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card text-center border-info shadow-sm">
+            <div class="card-body">
+                <i class="fas fa-clipboard-check fa-3x text-info mb-2"></i>
+                <h3 class="card-title fw-bold">{{ inspection_count }}</h3>
+                <p class="card-text text-muted">Total Inspections</p>
+            </div>
+            {# Link to inspections list if created #}
+            <div class="card-footer bg-info text-white">Details</div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card text-center border-danger shadow-sm">
+            <div class="card-body">
+                <i class="fas fa-user-slash fa-3x text-danger mb-2"></i>
+                <h3 class="card-title fw-bold">{{ banned_count }}</h3>
+                <p class="card-text text-muted">Banned Users</p>
+            </div>
+            <a href="{{ url_for('admin_users')}}" class="card-footer bg-danger text-white text-decoration-none">Manage
+                Users <i class="fas fa-arrow-circle-right ms-1"></i></a>
+        </div>
+    </div>
+</div>
+
+{# Add more dashboard widgets as needed #}
+
+{% endblock %}

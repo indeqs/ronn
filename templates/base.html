@@ -7,107 +7,166 @@
     <title>{% block title %}BlockInspect - Blockchain Construction Inspection{% endblock %}</title>
     <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    {# --- Navbar --- #}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow-sm"> {# Added sticky-top, shadow #}
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
+            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}"> {# Made bolder #}
                 <i class="fas fa-cube me-2"></i>BlockInspect
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0"> {# Added mb spacing for mobile #}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                        {# Use request.endpoint to set active class #}
+                        <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" aria-current="page"
+                            href="{{ url_for('index') }}">Home</a>
                     </li>
-                    {% if session.get('user_id') %}
+                    {% if current_user %} {# Check if user is logged in #}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+                        <a class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}"
+                            href="{{ url_for('dashboard') }}">Dashboard</a>
                     </li>
+                    {% if current_user.role != 'client' %} {# Non-clients see full project list link #}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('projects_list') }}">Projects</a>
+                        <a class="nav-link {% if request.endpoint == 'projects_list' %}active{% endif %}"
+                            href="{{ url_for('projects_list') }}">Projects</a>
                     </li>
                     {% endif %}
+                    {% if current_user.role == 'admin' %} {# Admin only link #}
                     <li class="nav-item">
-                        <a class="nav-link" href="#about">About</a>
+                        <a class="nav-link {% if request.endpoint.startswith('admin_') %}active{% endif %}"
+                            href="{{ url_for('admin_dashboard') }}">Admin Panel</a>
+                    </li>
+                    {% endif %}
+                    {% endif %}
+                    <li class="nav-item">
+                        {# Link to About page #}
+                        <a class="nav-link {% if request.endpoint == 'about' %}active{% endif %}"
+                            href="{{ url_for('about') }}">About</a>
+                    </li>
+                    <li class="nav-item">
+                        {# Link to Contact page #}
+                        <a class="nav-link {% if request.endpoint == 'contact' %}active{% endif %}"
+                            href="{{ url_for('contact') }}">Contact</a>
                     </li>
                 </ul>
+                {# --- Right Side Login/User Menu --- #}
                 <div class="navbar-nav">
-                    {% if session.get('user_id') %}
+                    {% if current_user %}
                     <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
-                            data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle me-1"></i>Account
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarUserDropdown"
+                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle me-2"></i>{{ current_user.username }}
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarUserDropdown">
+                            <li><span class="dropdown-item-text text-muted small">{{ current_user.role|capitalize
+                                    }}</span></li>
+                            <li><a class="dropdown-item" href="{{ url_for('dashboard') }}"><i
+                                        class="fas fa-tachometer-alt fa-fw me-2"></i>Dashboard</a></li>
+                            {% if current_user.role == 'admin' %}
+                            <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}"><i
+                                        class="fas fa-user-shield fa-fw me-2"></i>Admin Panel</a></li>
+                            {% endif %}
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">Logout</a></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i
+                                        class="fas fa-sign-out-alt fa-fw me-2"></i>Logout</a></li>
                         </ul>
                     </div>
                     {% else %}
-                    <a class="nav-link" href="{{ url_for('login') }}">Login</a>
-                    <a class="nav-link" href="{{ url_for('register') }}">Register</a>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'login' %}active{% endif %}"
+                            href="{{ url_for('login') }}">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('register') }}" class="btn btn-outline-light btn-sm ms-2">Register</a> {#
+                        Button style #}
+                    </li>
                     {% endif %}
                 </div>
             </div>
         </div>
     </nav>
 
+    {# --- Flash Messages Container --- #}
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-    <div class="container mt-3">
+    {# Put messages outside the main container to span full width potentially #}
+    <div class="container mt-3" id="flash-message-container"> {# Added ID #}
         {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show">
+        {# Use alert-dismissible for the close button functionality #}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
             {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         {% endfor %}
     </div>
     {% endif %}
     {% endwith %}
+    {# --- End Flash Messages --- #}
 
-    <main class="container py-4">
-        {% block content %}{% endblock %}
+    {# --- Main Content Block --- #}
+    <main class="container py-4"> {# This container holds page-specific content #}
+        {% block content %}{% endblock %} {# ** THIS LINE WAS MISSING ** #}
     </main>
+    {# --- End Main Content Block --- #}
 
-    <footer class="bg-dark text-white py-4 mt-5">
+
+    {# --- Footer --- #}
+    <footer class="bg-dark text-white py-5 mt-auto"> {# Added mt-auto, increased padding #}
         <div class="container">
-            <div class="row">
-                <div class="col-md-4">
-                    <h5><i class="fas fa-cube me-2"></i>BlockInspect</h5>
-                    <p>Blockchain-powered construction site inspection platform for enhanced transparency, security, and
-                        efficiency.</p>
+            <div class="row gy-4"> {# Added gutter spacing #}
+                <div class="col-lg-4 col-md-6">
+                    <h5 class="fw-bold mb-3"><i class="fas fa-cube me-2"></i>BlockInspect</h5>
+                    <p class="small text-white-50">Blockchain-powered construction site inspection platform for enhanced
+                        transparency, security, and efficiency.</p>
                 </div>
-                <div class="col-md-4">
-                    <h5>Quick Links</h5>
+                <div class="col-lg-2 col-md-6">
+                    <h5 class="fw-bold mb-3">Quick Links</h5>
                     <ul class="list-unstyled">
-                        <li><a href="{{ url_for('index') }}" class="text-white">Home</a></li>
-                        <li><a href="#about" class="text-white">About</a></li>
-                        <li><a href="#features" class="text-white">Features</a></li>
-                        <li><a href="#contact" class="text-white">Contact</a></li>
+                        <li><a href="{{ url_for('index') }}"
+                                class="text-white-50 text-decoration-none footer-link">Home</a></li>
+                        <li><a href="{{ url_for('about') }}"
+                                class="text-white-50 text-decoration-none footer-link">About</a></li>
+                        <li><a href="{{ url_for('index') }}#features"
+                                class="text-white-50 text-decoration-none footer-link">Features</a></li> {# Link to
+                        section #}
+                        <li><a href="{{ url_for('contact') }}"
+                                class="text-white-50 text-decoration-none footer-link">Contact</a></li>
                     </ul>
                 </div>
-                <div class="col-md-4">
-                    <h5>Contact</h5>
-                    <address>
-                        <i class="fas fa-map-marker-alt me-2"></i>Nairobi, Kenya<br>
-                        <i class="fas fa-envelope me-2"></i>info@blockinspect.com<br>
-                        <i class="fas fa-phone me-2"></i>+254 700 000000
+                <div class="col-lg-3 col-md-6">
+                    <h5 class="fw-bold mb-3">Legal</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-white-50 text-decoration-none footer-link">Privacy Policy</a></li>
+                        {# Placeholder links #}
+                        <li><a href="#" class="text-white-50 text-decoration-none footer-link">Terms of Service</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <h5 class="fw-bold mb-3">Contact Info</h5>
+                    <address class="small text-white-50 mb-0">
+                        <i class="fas fa-map-marker-alt fa-fw me-2"></i>Nairobi, Kenya<br>
+                        <i class="fas fa-envelope fa-fw me-2"></i>info@blockinspect.com<br>
+                        <i class="fas fa-phone fa-fw me-2"></i>+254 700 000000
                     </address>
                 </div>
             </div>
-            <hr>
-            <div class="text-center">
-                <p>&copy; 2025 BlockInspect. All rights reserved.</p>
+            <hr class="my-4 border-secondary"> {# Changed color #}
+            <div class="text-center text-white-50 small">
+                © {{ now().year }} BlockInspect. All rights reserved.
             </div>
         </div>
     </footer>
@@ -115,6 +174,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.8.0/web3.min.js"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/validation.js') }}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}About BlockInspect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center mb-4">
+        <div class="col-lg-8 text-center">
+            <i class="fas fa-info-circle fa-3x text-primary mb-3"></i>
+            <h1 class="fw-bold">About BlockInspect</h1>
+            <p class="lead text-muted">Transforming construction site inspections with secure blockchain technology.</p>
+        </div>
+    </div>
+
+    <div class="row align-items-center">
+        <div class="col-lg-6 mb-4 mb-lg-0">
+            {# You can reuse an image or find a different one #}
+            <img src="{{ url_for('static', filename='img/contact-us.webp') }}" alt="Construction Technology"
+                class="img-fluid rounded shadow">
+        </div>
+        <div class="col-lg-6">
+            <h2 class="fw-bold mb-3">Our Mission</h2>
+            <p>BlockInspect was developed to address the inefficiencies, lack of transparency, and vulnerabilities to
+                fraud inherent in traditional construction site inspection processes. We aim to bring trust and
+                accountability to the forefront of the industry.</p>
+            <p>By leveraging the immutable and transparent nature of blockchain technology, we provide a robust platform
+                for documenting, verifying, and sharing construction site inspection data securely among all
+                stakeholders.</p>
+
+            <h3 class="fw-bold mt-4 mb-3">Why Choose BlockInspect?</h3>
+            <ul>
+                <li><strong>Immutable Records:</strong> Once an inspection is recorded on the blockchain, it cannot be
+                    altered or deleted.</li>
+                <li><strong>Enhanced Transparency:</strong> Authorized stakeholders gain real-time access to verified
+                    inspection data.</li>
+                <li><strong>Streamlined Compliance:</strong> Easily generate auditable reports for regulatory bodies.
+                </li>
+                <li><strong>Increased Accountability:</strong> Clear attribution and timestamps for all inspection
+                    activities.</li>
+                <li><strong>Improved Efficiency:</strong> Reduce paperwork and disputes with a single source of truth.
+                </li>
+            </ul>
+            <p>We believe that technology can significantly improve the way construction projects are managed and
+                verified. BlockInspect is our contribution towards a more reliable and efficient future for the
+                construction industry.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

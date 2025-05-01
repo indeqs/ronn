@@ -4,45 +4,99 @@
 
 {% block content %}
 <div class="row justify-content-center my-5">
-    <div class="col-md-8 col-lg-6">
+    <div class="col-md-8 col-lg-7">
         <div class="card shadow border-0">
-            <div class="card-body p-5">
+            <div class="card-body p-4 p-md-5">
                 <div class="text-center mb-4">
-                    <i class="fas fa-plus-circle fa-3x text-primary mb-3"></i>
+                    <i class="fas fa-hard-hat fa-3x text-primary mb-3"></i>
                     <h3 class="fw-bold">Create New Project</h3>
-                    <p class="text-muted">Fill in the details below to create a new project</p>
+                    <p class="text-muted">Fill in the details below.</p>
                 </div>
 
                 <form method="POST" action="{{ url_for('create_project') }}">
+                    {# --- Name --- #}
                     <div class="mb-3">
-                        <label for="name" class="form-label">Project Name</label>
-                        <input type="text" class="form-control" id="name" name="name" placeholder="Enter project name"
-                            required>
+                        <label for="name" class="form-label">Project Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="name" name="name"
+                            placeholder="e.g., Downtown Office Tower" required
+                            value="{{ request_form.get('name', '') }}">
                     </div>
 
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="4"
-                            placeholder="Enter project description" required></textarea>
+                    {# --- Type and Location --- #}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="project_type" class="form-label">Project Type <span
+                                    class="text-danger">*</span></label>
+                            <select class="form-select" id="project_type" name="project_type" required>
+                                <option value="" selected disabled>Select type...</option>
+                                {% for type in project_types %}
+                                <option value="{{ type }}" {% if request_form.get('project_type')==type %}selected{%
+                                    endif %}>{{ type }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="location" class="form-label">Location <span class="text-danger">*</span></label>
+                            <select class="form-select" id="location" name="location" required>
+                                <option value="" selected disabled>Select location...</option>
+                                {% for loc in locations %}
+                                <option value="{{ loc }}" {% if request_form.get('location')==loc %}selected{% endif %}>
+                                    {{ loc }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
 
+                    {# --- Description --- #}
                     <div class="mb-3">
-                        <label for="location" class="form-label">Location</label>
-                        <input type="text" class="form-control" id="location" name="location"
-                            placeholder="Enter project location" required>
+                        <label for="description" class="form-label">Description <span
+                                class="text-danger">*</span></label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                            placeholder="Brief overview of the project"
+                            required>{{ request_form.get('description', '') }}</textarea>
                     </div>
 
+                    {# --- Client (Mandatory) --- #}
                     <div class="mb-3">
-                        <label for="start_date" class="form-label">Start Date</label>
-                        <input type="date" class="form-control" id="start_date" name="start_date" required>
+                        <label for="client_name" class="form-label">Client Name <span
+                                class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="client_name" name="client_name"
+                            placeholder="e.g., Acme Corporation or John Smith" required
+                            value="{{ request_form.get('client_name', '') }}">
+                        <div class="form-text">Enter the name of the client or company for this project.</div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="end_date" class="form-label">End Date (Optional)</label>
-                        <input type="date" class="form-control" id="end_date" name="end_date">
+                    {# --- Dates (Start date is now editable, no default value set here) --- #}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="start_date" class="form-label">Start Date <span
+                                    class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" required
+                                value="{{ request_form.get('start_date', '') }}"> {# Removed default value #}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="end_date" class="form-label">Planned End Date (Optional)</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date"
+                                value="{{ request_form.get('end_date', '') }}">
+                        </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-100 py-2">Create Project</button>
+                    {# --- Phase --- #}
+                    <div class="mb-4">
+                        <label for="phase" class="form-label">Initial Phase <span class="text-danger">*</span></label>
+                        {# Added Required #}
+                        <select class="form-select" id="phase" name="phase" required> {# Added Required #}
+                            {% for ph in phases %}
+                            {# Default to 'Planning' if not in form data #}
+                            <option value="{{ ph }}" {% if request_form.get('phase', 'Planning' )==ph %}selected{% endif
+                                %}>{{ ph }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg py-2">Create Project</button>
+                    </div>
                 </form>
             </div>
         </div>

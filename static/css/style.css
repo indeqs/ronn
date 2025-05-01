@@ -246,3 +246,35 @@ footer a:hover {
         left: 5px;
     }
 }
+
+/* Footer Link Hover Effect */
+.footer-link:hover {
+    color: var(--bs-white) !important;
+    /* Use Bootstrap variable */
+    text-decoration: underline !important;
+}
+
+/* Ensure main content pushes footer down */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main.container {
+    flex: 1;
+}
+
+/* Adjust padding top if using sticky navbar */
+body {
+    padding-top: 70px;
+    /* Adjust based on your navbar height */
+}
+
+/* Responsive padding for sticky navbar */
+@media (max-width: 991.98px) {
+    body {
+        padding-top: 56px;
+        /* Default BS navbar height */
+    }
+}

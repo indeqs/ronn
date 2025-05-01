@@ -4,29 +4,113 @@
 
 {% block content %}
 <div class="row justify-content-center my-5">
-    <div class="col-md-8">
+    <div class="col-md-9 col-lg-8"> {# Slightly wider column #}
         <div class="card shadow border-0">
-            <div class="card-body p-5">
-                <h3 class="fw-bold mb-4">Inspection Details</h3>
-                <p><strong>Project:</strong> {{ project.name }}</p>
-                <p><strong>Inspector:</strong> {{ inspector.username if inspector else 'Unknown' }}</p>
-                <p><strong>Date:</strong> {{ inspection.date.strftime('%b %d, %Y %I:%M %p') }}</p>
-                <p><strong>Status:</strong> {{ inspection.status }}</p>
-                <p><strong>Notes:</strong> {{ inspection.notes }}</p>
-                <p><strong>Blockchain Verification:</strong>
-                    {% if inspection.blockchain_tx_hash %}
-                    <span class="text-success"><i class="fas fa-check-circle me-1"></i>Verified</span>
-                    <br>
-                    <code>{{ inspection.blockchain_tx_hash }}</code>
-                    {% else %}
-                    <span class="text-warning"><i class="fas fa-clock me-1"></i>Pending</span>
-                    {% endif %}
-                </p>
-                <a href="{{ url_for('project_detail', project_id=project.id) }}" class="btn btn-primary mt-3">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Project
-                </a>
+            <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold">Inspection Report</h5>
+                {# Badge based on inspection status #}
+                <span
+                    class="badge {% if inspection.status == 'Passed' %}bg-success{% elif inspection.status == 'Action Required' %}bg-danger{% elif inspection.status == 'Needs Review' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                    {{ inspection.status }}
+                </span>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <p class="mb-2"><strong>Project:</strong>
+                            <a href="{{ url_for('project_detail', project_id=inspection.project.id) }}"
+                                class="text-decoration-none">
+                                {{ inspection.project.name }}
+                            </a>
+                            <span class="text-muted small">({{ inspection.project.project_type }})</span>
+                        </p>
+                        <p class="mb-2"><strong>Inspector:</strong>
+                            <i class="fas fa-user-shield me-1 text-muted"></i>
+                            {{ inspection.inspector.username if inspection.inspector else 'Unknown' }}
+                            <span class="text-muted small">({{ inspection.inspector.role|capitalize if
+                                inspection.inspector else '' }})</span>
+                        </p>
+                        <p class="mb-0"><strong>Date & Time:</strong>
+                            <i class="fas fa-calendar-alt me-1 text-muted"></i>
+                            {{ inspection.date.strftime('%b %d, %Y %I:%M %p UTC') }}
+                        </p>
+                    </div>
+                    <div class="col-md-6 text-md-end"> {# Blockchain status on right for larger screens #}
+                        <p class="mb-1"><strong>Blockchain Verification:</strong></p>
+                        {% if inspection.blockchain_tx_hash %}
+                        <span class="text-success"><i class="fas fa-check-circle fa-lg me-1"></i>Verified</span>
+                        <br>
+                        <code class="small text-muted" data-bs-toggle="tooltip"
+                            title="Transaction Hash">{{ inspection.blockchain_tx_hash[:10] }}...{{ inspection.blockchain_tx_hash[-8:] }}</code>
+                        {# Add link to explorer if available #}
+                        {% else %}
+                        <span class="text-warning"><i class="fas fa-clock fa-lg me-1"></i>Pending</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <hr>
+
+                <h5 class="mb-3 mt-4">Inspection Notes</h5>
+                <div class="bg-light p-3 rounded mb-4 border">
+                    <p class="mb-0" style="white-space: pre-wrap;">{{ inspection.notes if inspection.notes else 'No
+                        notes provided.' }}</p>
+                </div>
+
+
+                <h5 class="mb-3">Completion Status</h5>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-3">
+                        <div class="text-center p-3 border rounded bg-light">
+                            <div class="fs-6 text-muted mb-1">Structural</div>
+                            <div class="fw-bold fs-4">{{ inspection.structural_completion if
+                                inspection.structural_completion is not none else 'N/A' }}%</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <div class="text-center p-3 border rounded bg-light">
+                            <div class="fs-6 text-muted mb-1">Electrical</div>
+                            <div class="fw-bold fs-4">{{ inspection.electrical_completion if
+                                inspection.electrical_completion is not none else 'N/A' }}%</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <div class="text-center p-3 border rounded bg-light">
+                            <div class="fs-6 text-muted mb-1">Plumbing</div>
+                            <div class="fw-bold fs-4">{{ inspection.plumbing_completion if
+                                inspection.plumbing_completion is not none else 'N/A' }}%</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <div class="text-center p-3 border rounded bg-light">
+                            <div class="fs-6 text-muted mb-1">Safety</div>
+                            <div class="fw-bold fs-4">{{ inspection.safety_compliance if inspection.safety_compliance is
+                                not none else 'N/A' }}%</div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="mt-4 text-center">
+                    <a href="{{ url_for('project_detail', project_id=inspection.project.id) }}"
+                        class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Project Details
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{# Initialize Bootstrap Tooltips if using them #}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    });
+</script>
 {% endblock %}
