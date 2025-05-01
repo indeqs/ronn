@@ -56,15 +56,27 @@
                             required>{{ request_form.get('description', '') }}</textarea>
                     </div>
 
-                    {# --- Client (Mandatory) --- #}
+                    {# --- Assign Client Dropdown (Mandatory) --- #}
                     <div class="mb-3">
-                        <label for="client_name" class="form-label">Client Name <span
+                        <label for="client_id" class="form-label">Assign Client <span
                                 class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="client_name" name="client_name"
-                            placeholder="e.g., Acme Corporation or John Smith" required
-                            value="{{ request_form.get('client_name', '') }}">
-                        <div class="form-text">Enter the name of the client or company for this project.</div>
+                        <select class="form-select" id="client_id" name="client_id" required> {# ** USE <select> and
+                                name="client_id" ** #}
+                                <option value="" selected disabled>-- Select Client --</option>
+                                {# Loop through 'clients' passed from the route #}
+                                {% for client in clients %}
+                                <option value="{{ client.id }}" {% if request_form.get('client_id')|int==client.id
+                                    %}selected{% endif %}>
+                                    {{ client.username }} ({{ client.email }})
+                                </option>
+                                {% else %}
+                                {# Message if no clients are available #}
+                                <option value="" disabled>No available clients found. Register clients first.</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Select the registered client for this project.</div>
                     </div>
+                    {# --- End Assign Client Dropdown --- #}
 
                     {# --- Dates (Start date is now editable, no default value set here) --- #}
                     <div class="row">

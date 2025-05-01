@@ -25,6 +25,7 @@ from utils.email_sender import (
     send_verification_code,
     send_email,
 )
+from utils.blockchain import record_inspection_on_chain, SIMULATE_BLOCKCHAIN
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -103,6 +104,14 @@ class User(db.Model):
         foreign_keys="Inspection.inspector_id",
     )
 
+    # --- ADD client_projects relationship ---
+    client_projects = db.relationship(
+        "Project", backref="client", lazy=True, foreign_keys="Project.client_id"
+    )
+    password_reset_tokens = db.relationship(
+        "PasswordResetToken", backref="user", lazy=True, cascade="all, delete-orphan"
+    )
+
 
 class Project(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -110,7 +119,7 @@ class Project(db.Model):
     project_type = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text, nullable=False)
     location = db.Column(db.String(100), nullable=False)
-    start_date = db.Column(db.Date, nullable=False, default=date.today)
+    start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=True)
     phase = db.Column(db.String(50), nullable=False, default="Planning")
     status = db.Column(
@@ -120,7 +129,8 @@ class Project(db.Model):
     owner_id = db.Column(
         db.Integer, db.ForeignKey("user.id"), nullable=False
     )  # Engineer/Admin who created it
-    client_name = db.Column(db.String(150), nullable=False)
+    client_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    # client_name = db.Column(db.String(150), nullable=False)
 
     # Relationship
     inspections = db.relationship(
@@ -172,6 +182,63 @@ with app.app_context():
     db.create_all()
     print("Database tables checked/created.")
 
+
+# --- Function to Create Default Admin ---
+def create_default_admin():
+    with app.app_context():  # Need app context for DB operations
+        admin_username = "admin"
+        admin_email = os.environ.get(
+            "ADMIN_EMAIL", "admin@blockinspect.local"
+        )  # Use env var or default
+        admin_password = "admin"  # The desired password
+
+        # Check if admin user already exists by username or email
+        existing_admin = User.query.filter(
+            (User.username == admin_username) | (User.email == admin_email)
+        ).first()
+
+        if not existing_admin:
+            print(f"Admin user '{admin_username}' not found, creating...")
+            # Ensure the role is 'admin'
+            hashed_password = generate_password_hash(admin_password)
+            admin_user = User(
+                username=admin_username,
+                email=admin_email,
+                password=hashed_password,
+                role="admin",
+                email_verified=True,  # Auto-verify admin for convenience
+                is_banned=False,
+            )
+            db.session.add(admin_user)
+            try:
+                db.session.commit()
+                print(f"Default admin user '{admin_username}' created successfully.")
+            except Exception as e:
+                db.session.rollback()
+                print(f"Error creating default admin user: {e}")
+        else:
+            # Optionally, ensure the existing user has the admin role
+            if existing_admin.role != "admin":
+                print(
+                    f"User '{existing_admin.username}' exists but is not admin. Updating role..."
+                )
+                existing_admin.role = "admin"
+                # Optionally reset password if needed for consistency (or handle separately)
+                # existing_admin.password = generate_password_hash(admin_password)
+                try:
+                    db.session.commit()
+                    print(f"User '{existing_admin.username}' role updated to admin.")
+                except Exception as e:
+                    db.session.rollback()
+                    print(f"Error updating user role: {e}")
+            else:
+                print(f"Admin user '{existing_admin.username}' already exists.")
+
+
+# --- Call the function before running the app ---
+# Make sure db.create_all() has run before this
+create_default_admin()
+
 # --- Context Processors ---
 
 
@@ -217,41 +284,52 @@ def login_required(f):
     return decorated_function
 
 
-def role_required(*roles):  # Outer function takes arguments
-    # This function ('decorator') IS the actual decorator returned by the factory
-    def decorator(f):  # 'f' is defined here; 'decorator' is defined here
-        @wraps(f)  # This MUST be indented under 'decorator'
-        def decorated_function(
-            *args, **kwargs
-        ):  # This MUST be indented under 'decorator'
-            # --- Start of decorated_function's block ---
-            user = User.query.get(
-                session.get("user_id")
-            )  # Assumes login_required runs first
-            if not user or user.role not in roles:
-                flash("You do not have permission to access this page.", "danger")
-                return redirect(url_for("dashboard"))
-            # Call the original function 'f'
-            return f(*args, **kwargs)
-            # --- End of decorated_function's block ---
+def role_required(*roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Assuming @login_required ran first, user_id is in session
+            user = User.query.get(session.get("user_id"))
 
-        # This MUST be indented under 'decorator', aligned with @wraps and def decorated_function
+            # Check 1: Basic permission check (user exists and role matches)
+            if not user or user.role not in roles:
+
+                # Check 2: Specific case - Admin trying to access non-admin action/route
+                # Check if 'admin' is *not* in the allowed roles for this route
+                # AND if the current logged-in user *is* an admin.
+                if user and user.role == "admin" and "admin" not in roles:
+                    flash("Administrators cannot perform this user action.", "warning")
+                    return redirect(url_for("admin_dashboard"))
+
+                # Check 3: Specific case - Non-admin trying to access admin route
+                # Check if 'admin' *is* in the allowed roles for this route
+                # AND if the current logged-in user is *not* an admin.
+                elif "admin" in roles and (not user or user.role != "admin"):
+                    flash(
+                        "You do not have permission to access the admin area.", "danger"
+                    )
+                    # Send non-admins back to their dashboard
+                    return redirect(
+                        url_for("user_dashboard")
+                    )  # Or the main dashboard redirector
+
+                # General "Permission Denied" for other role mismatches
+                else:
+                    flash("You do not have permission to view this page.", "danger")
+                    # Default redirect to appropriate dashboard
+                    if user and user.role == "admin":
+                        return redirect(url_for("admin_dashboard"))
+                    elif user:  # Engineer or Client
+                        return redirect(url_for("user_dashboard"))
+                    else:  # Should not happen if @login_required works
+                        return redirect(url_for("login"))
+
+            # If all checks pass, execute the original function
+            return f(*args, **kwargs)
+
         return decorated_function
 
-    # This MUST be indented under 'role_required', aligned with def decorator
-    return decorator  # Returns the 'decorator' function
-
-
-# --- Helper Function ---
-def get_current_user():
-    if "user_id" in session:
-        return User.query.get(session["user_id"])
-    return None
-
-
-@app.context_processor
-def inject_user():
-    return dict(current_user=get_current_user())
+    return decorator
 
 
 # --- Routes ---
@@ -451,6 +529,28 @@ def resend_otp():
     return redirect(url_for("verify_otp"))
 
 
+# Generic Dashboard Route - Redirects based on role
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    # Get user from DB using session ID
+    user_id = session.get("user_id")  # Get ID from session
+    if not user_id:
+        flash("Session error. Please login again.", "warning")
+        return redirect(url_for("login"))
+
+    user = User.query.get(user_id)  # Query the DB for the user object
+    if not user:
+        session.clear()
+        flash("User account not found.", "warning")
+        return redirect(url_for("login"))
+
+    if user.role == "admin":
+        return redirect(url_for("admin_dashboard"))
+    else:
+        return redirect(url_for("user_dashboard"))
+
+
 # --- Login/Logout ---
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -488,7 +588,7 @@ def login():
                 if user.role == "admin":
                     return redirect(url_for("admin_dashboard"))
                 else:
-                    return redirect(url_for("dashboard"))
+                    return redirect(url_for("user_dashboard"))
             else:
                 flash("Invalid username or password.", "danger")
         else:
@@ -547,12 +647,20 @@ def admin_projects():
 @app.route("/admin/users/<int:user_id>/ban", methods=["POST"])
 @login_required
 @role_required("admin")
-def ban_user(user_id):
-    user_to_ban = User.query.get_or_404(user_id)
-    admin_user = get_current_user()
+def ban_user(user_id_to_ban):  # Renamed parameter to avoid confusion
+    user_to_ban = User.query.get_or_404(user_id_to_ban)
+    # Get the currently logged-in admin user from session
+    admin_user_id = session.get("user_id")
+    if not admin_user_id:
+        flash("Admin session error.", "danger")
+        return redirect(url_for("admin_users"))
+    admin_user = User.query.get(admin_user_id)
+    if not admin_user:
+        flash("Admin account not found.", "danger")
+        return redirect(url_for("admin_users"))
 
     # Prevent admin from banning themselves or another admin (optional rule)
-    if user_to_ban.id == admin_user.id:
+    if user_to_ban.id == admin_user.id:  # Compare IDs
         flash("You cannot ban yourself.", "danger")
     elif user_to_ban.role == "admin":
         flash("Administrators cannot be banned through this interface.", "warning")
@@ -567,8 +675,8 @@ def ban_user(user_id):
 @app.route("/admin/users/<int:user_id>/unban", methods=["POST"])
 @login_required
 @role_required("admin")
-def unban_user(user_id):
-    user_to_unban = User.query.get_or_404(user_id)
+def unban_user(user_id_to_unban):  # Renamed parameter
+    user_to_unban = User.query.get_or_404(user_id_to_unban)
     user_to_unban.is_banned = False
     db.session.commit()
     flash(f"User '{user_to_unban.username}' has been unbanned.", "success")
@@ -745,24 +853,32 @@ def contact():
 
 
 # --- Core Application Routes ---
-@app.route("/dashboard")
+@app.route("/user_dashboard")
 @login_required
-def dashboard():
-    user = get_current_user()
+@role_required("engineer", "client")  # Explicitly allow only engineer and client
+def user_dashboard():
+    # Get user from DB using session ID
+    user_id = session.get("user_id")  # Get ID
+    if not user_id:
+        flash("Session error.", "warning")
+        return redirect(url_for("login"))
+    user = User.query.get(user_id)  # Query
+    if not user:
+        session.clear()
+        flash("User not found.", "warning")
+        return redirect(url_for("login"))
+
     projects = []
     inspections = []
-
-    if user.role == "admin":
-        projects = Project.query.order_by(Project.start_date.desc()).all()
-        inspections = Inspection.query.order_by(Inspection.date.desc()).limit(10).all()
-    elif user.role == "engineer":
+    # Use the 'user' variable queried above
+    if user.role == "engineer":
         projects = (
             Project.query.filter_by(owner_id=user.id)
             .order_by(Project.start_date.desc())
             .all()
         )
         project_ids = [p.id for p in projects]
-        # Show inspections owned by engineer OR for projects owned by engineer
+        # Use user.id for inspector check
         inspections = (
             Inspection.query.filter(
                 (Inspection.inspector_id == user.id)
@@ -772,35 +888,48 @@ def dashboard():
             .limit(10)
             .all()
         )
-    # elif user.role == "client":
-    #     # Clients see projects where they are the client_id
-    #     projects = (
-    #         Project.query.filter_by(client_id=user.id)
-    #         .order_by(Project.start_date.desc())
-    #         .all()
-    #     )
-    #     project_ids = [p.id for p in projects]
-    #     # Clients see inspections only for their projects
-    #     if project_ids:
-    #         inspections = (
-    #             Inspection.query.filter(Inspection.project_id.in_(project_ids))
-    #             .order_by(Inspection.date.desc())
-    #             .limit(10)
-    #             .all()
-    #         )
-    #     else:
-    #         inspections = []
+    elif user.role == "client":
+        projects = (
+            Project.query.filter_by(client_id=user.id)
+            .order_by(Project.start_date.desc())
+            .all()
+        )
+        project_ids = [p.id for p in projects]
+        if project_ids:
+            inspections = (
+                Inspection.query.filter(Inspection.project_id.in_(project_ids))
+                .order_by(Inspection.date.desc())
+                .limit(10)
+                .all()
+            )
+        else:
+            inspections = []
 
     return render_template(
-        "dashboard.html", user=user, projects=projects, inspections=inspections
+        "user_dashboard.html",
+        user=user,  # Pass user object to template if needed
+        projects=projects,
+        inspections=inspections,
     )
 
 
 @app.route("/projects")
 @login_required
+# Allow all roles to see the list, filtering happens inside
 def projects_list():
-    user = get_current_user()
+    # Get user from DB using session ID
+    user_id = session.get("user_id")  # Get ID
+    if not user_id:
+        flash("Session error.", "warning")
+        return redirect(url_for("login"))
+    user = User.query.get(user_id)  # Query
+    if not user:
+        session.clear()
+        flash("User not found.", "warning")
+        return redirect(url_for("login"))
+
     projects = []
+    # Use the 'user' variable queried above
     if user.role == "admin":
         projects = Project.query.order_by(Project.start_date.desc()).all()
     elif user.role == "engineer":
@@ -816,38 +945,49 @@ def projects_list():
             .all()
         )
 
-    return render_template("projects.html", projects=projects)
+    return render_template("projects_list.html", projects=projects)
 
 
 @app.route("/projects/<int:project_id>")
 @login_required
+# Authorization check remains inside
 def project_detail(project_id):
     project = Project.query.get_or_404(project_id)
-    user = get_current_user()
+    # Get user from DB using session ID
+    user_id = session.get("user_id")  # Get ID
+    if not user_id:
+        flash("Session error.", "warning")
+        return redirect(url_for("login"))
+    user = User.query.get(user_id)  # Query
+    if not user:
+        session.clear()
+        flash("User not found.", "warning")
+        return redirect(url_for("login"))
 
-    # Authorization Check
+    # Authorization Check using the queried 'user' object
     can_view = False
     if user.role == "admin":
         can_view = True
     elif user.role == "engineer" and project.owner_id == user.id:
         can_view = True
-    # elif user.role == "client" and project.client_id == user.id:  # Client access check
-    #     can_view = True
+    elif user.role == "client" and project.client_id == user.id:
+        can_view = True
 
     if not can_view:
+        # ... (redirect logic) ...
         flash("You do not have permission to view this project.", "danger")
-        return redirect(url_for("projects_list"))
+        if user.role == "admin":
+            return redirect(url_for("admin_projects"))
+        else:
+            return redirect(url_for("projects_list"))
 
     inspections = (
         Inspection.query.filter_by(project_id=project.id)
         .order_by(Inspection.date.desc())
         .all()
     )
-
     return render_template(
-        "project_detail.html",
-        project=project,
-        inspections=inspections,
+        "project_detail.html", project=project, inspections=inspections
     )
 
 
@@ -855,19 +995,33 @@ def project_detail(project_id):
 @login_required
 @role_required("admin", "engineer")
 def create_project():
-    user = get_current_user()
-    # No need to query clients anymore
-    # clients = User.query.filter_by(role='client', email_verified=True, is_banned=False).order_by(User.username).all()
+    user_id = session.get("user_id")  # Get ID
+    if not user_id:
+        flash("Session error.", "warning")
+        return redirect(url_for("login"))
+    user = User.query.get(user_id)  # Query
+    if not user:
+        session.clear()
+        flash("User not found.", "warning")
+        return redirect(url_for("login"))
+    # Query clients again
+    clients = (
+        User.query.filter_by(role="client", email_verified=True, is_banned=False)
+        .order_by(User.username)
+        .all()
+    )
 
     if request.method == "POST":
         name = request.form.get("name")
         project_type = request.form.get("project_type")
         description = request.form.get("description")
         location = request.form.get("location")
-        start_date_str = request.form.get("start_date")
+        # Start date is NOT taken from form, set automatically
         end_date_str = request.form.get("end_date")
         phase = request.form.get("phase", "Planning")
-        client_name = request.form.get("client_name")  # Get client_name input
+        client_id_str = request.form.get("client_id")  # Get client_id dropdown value
+
+        start_date = date.today()  # *** Set start date automatically ***
 
         # --- Backend Validation ---
         errors = {}
@@ -879,29 +1033,30 @@ def create_project():
             errors["description"] = "Description is required."
         if not location or location not in app.config["PROJECT_LOCATIONS"]:
             errors["location"] = "Valid Location is required."
-        if not client_name:
-            errors["client_name"] = "Client Name is required."  # Now required
-        # ... (keep date and phase validation as before) ...
-        if not start_date_str:
-            errors["start_date"] = "Start Date is required."
-        else:
-            try:
-                start_date = date.fromisoformat(start_date_str)
-            except ValueError:
-                errors["start_date"] = "Invalid Start Date format."
+
         # Validate end date only if provided
         end_date = None
         if end_date_str:
             try:
                 end_date = date.fromisoformat(end_date_str)
-                if (
-                    "start_date" not in errors
-                    and "start_date" in locals()
-                    and end_date < start_date
-                ):
+                if end_date < start_date:  # Compare against auto-set start_date
                     errors["end_date"] = "End Date cannot be before Start Date."
             except ValueError:
                 errors["end_date"] = "Invalid End Date format."
+
+        # Client ID is mandatory
+        client_id = None
+        if not client_id_str:
+            errors["client_id"] = "A Client must be assigned to the project."
+        else:
+            try:
+                client_id = int(client_id_str)
+                if not User.query.filter_by(
+                    id=client_id, role="client", is_banned=False
+                ).first():
+                    errors["client_id"] = "Invalid or inactive Client selected."
+            except ValueError:
+                errors["client_id"] = "Invalid Client ID format."
 
         if not phase or phase not in app.config["PROJECT_PHASES"]:
             errors["phase"] = "Valid Phase is required."
@@ -909,14 +1064,16 @@ def create_project():
         if errors:
             for field, msg in errors.items():
                 flash(msg, "danger")
+            # Pass today's date for the readonly field
             return render_template(
                 "create_project.html",
                 project_types=app.config["PROJECT_TYPES"],
                 locations=app.config["PROJECT_LOCATIONS"],
                 phases=app.config["PROJECT_PHASES"],
-                # Don't pass clients anymore
+                clients=clients,
+                today_date=date.today().isoformat(),  # Pass today's date
                 request_form=request.form,
-            )  # Pass form back
+            )
         # --- End Validation ---
 
         # Proceed if no errors
@@ -925,11 +1082,11 @@ def create_project():
             project_type=project_type,
             description=description,
             location=location,
-            start_date=start_date,
+            start_date=start_date,  # Use auto-set start_date
             end_date=end_date,
             phase=phase,
             owner_id=user.id,
-            client_name=client_name,  # Save the client_name string
+            client_id=client_id,  # Use validated client_id
             status="Active",
         )
         db.session.add(new_project)
@@ -944,43 +1101,47 @@ def create_project():
         project_types=app.config["PROJECT_TYPES"],
         locations=app.config["PROJECT_LOCATIONS"],
         phases=app.config["PROJECT_PHASES"],
-        # Don't pass clients anymore
+        clients=clients,
+        today_date=date.today().isoformat(),  # Pass today's date
         request_form={},
-    )  # Pass empty dict on GET
+    )
 
 
 @app.route("/inspections/<int:inspection_id>")
 @login_required
+# Auth check inside
 def inspection_detail(inspection_id):
     inspection = Inspection.query.get_or_404(inspection_id)
-    user = get_current_user()
-    project = inspection.project
+    # Get user from DB using session ID
+    user_id = session.get("user_id")  # Get ID
+    if not user_id:
+        flash("Session error.", "warning")
+        return redirect(url_for("login"))
+    user = User.query.get(user_id)  # Query
+    if not user:
+        session.clear()
+        flash("User not found.", "warning")
+        return redirect(url_for("login"))
 
-    # Authorization: Admin, Engineer (owner/inspector), or Client of the project
+    project = inspection.project
+    # Authorization using the queried 'user' object
     can_view = False
     if user.role == "admin":
         can_view = True
-    elif user.role == "engineer" and (
-        project.owner_id == user.id or inspection.inspector_id == user.id
-    ):
+    elif user.role == "engineer" and project.owner_id == user.id:
         can_view = True
-    # elif user.role == "client" and project.client_id == user.id:  # Client access check
-    #     can_view = True
+    elif user.role == "client" and project.client_id == user.id:
+        can_view = True
 
     if not can_view:
+        # ... (redirect logic) ...
         flash("You do not have permission to view this inspection.", "danger")
-        # Redirect based on role? Maybe just back to their dashboard.
-        if user.role == "client":
-            return redirect(
-                url_for("project_detail", project_id=project.id)
-            )  # Client likely came from project detail
+        if user.role == "admin":
+            return redirect(url_for("admin_dashboard"))
         else:
-            return redirect(url_for("dashboard"))
+            return redirect(url_for("projects_list"))
 
-    return render_template(
-        "inspection_detail.html",
-        inspection=inspection,
-    )
+    return render_template("inspection_detail.html", inspection=inspection)
 
 
 @app.route("/create_inspection/<int:project_id>", methods=["GET", "POST"])
@@ -988,17 +1149,20 @@ def inspection_detail(inspection_id):
 @role_required("admin", "engineer")
 def create_inspection(project_id):
     project = Project.query.get_or_404(project_id)
-    user = get_current_user()
+    user_id = session.get("user_id")  # Get ID
+    if not user_id:
+        flash("Session error.", "warning")
+        return redirect(url_for("login"))
+    user = User.query.get(user_id)  # Query
+    if not user:
+        session.clear()
+        flash("User not found.", "warning")
+        return redirect(url_for("login"))
 
     # Authorization check (Admin or Engineer owner)
-    if not (
-        user.role == "admin"
-        or (user.role == "engineer" and project.owner_id == user.id)
-    ):
-        flash(
-            "You do not have permission to create inspections for this project.",
-            "danger",
-        )
+    # Authorization check using queried 'user' object
+    if project.owner_id != user.id:  # Engineer must own the project
+        flash("You can only create inspections for projects you own.", "danger")
         return redirect(url_for("project_detail", project_id=project.id))
 
     if request.method == "POST":
@@ -1063,28 +1227,41 @@ def create_inspection(project_id):
         )
         db.session.add(new_inspection)
         db.session.commit()
+        current_app.logger.info(f"Inspection {new_inspection.id} saved to database.")
 
-        # --- TODO: Blockchain Integration ---
-        # 1. Prepare data to be stored (e.g., inspection ID, hash of notes/data, project ID, timestamp)
-        # inspection_data_hash = generate_hash(f"{new_inspection.id}-{new_inspection.notes}-{new_inspection.date}")
-        # 2. Connect to blockchain network (e.g., using Web3.py and RPC endpoint)
-        # 3. Load your smart contract ABI and address
-        # 4. Call the smart contract function to record the inspection hash
-        #    (Requires signing the transaction with the engineer's/server's private key)
-        # try:
-        #     tx_receipt = contract.functions.recordInspection(new_inspection.id, inspection_data_hash).transact({'from': YOUR_ACCOUNT_ADDRESS})
-        #     tx_hash = tx_receipt['transactionHash'].hex()
-        #     # 5. Update the inspection record in *our* DB with the transaction hash
-        #     new_inspection.blockchain_tx_hash = tx_hash
-        #     db.session.commit()
-        #     current_app.logger.info(f"Inspection {new_inspection.id} recorded on blockchain. Tx: {tx_hash}")
-        # except Exception as e:
-        #     current_app.logger.error(f"Blockchain transaction failed for inspection {new_inspection.id}: {e}")
-        #     # Decide how to handle failure: maybe flash a warning, retry later?
-        #     flash("Inspection saved, but failed to record on blockchain. Please contact support.", "warning")
-        # --- End Blockchain Integration ---
+        # --- Blockchain Integration Call ---
+        current_app.logger.info(
+            f"Attempting to record inspection {new_inspection.id} on blockchain..."
+        )
+        tx_hash = record_inspection_on_chain(new_inspection)  # Call the function
 
-        flash("Inspection recorded successfully!", "success")
+        if tx_hash:
+            # Save the transaction hash back to the DB
+            new_inspection.blockchain_tx_hash = tx_hash
+            db.session.commit()
+            current_app.logger.info(
+                f"Blockchain tx hash {tx_hash} saved for inspection {new_inspection.id}."
+            )
+            # Flash success message including blockchain status
+            flash(
+                f"Inspection recorded successfully and submitted to blockchain (Tx: {tx_hash[:10]}...).",
+                "success",
+            )
+        else:
+            # Flash message indicating DB save but blockchain failure/simulation
+            if SIMULATE_BLOCKCHAIN:  # Check the flag from blockchain util
+                flash(
+                    "Inspection recorded successfully (Blockchain interaction simulated).",
+                    "success",
+                )
+            else:
+                flash(
+                    "Inspection recorded successfully, but failed to submit to blockchain. Please check logs or contact support.",
+                    "warning",
+                )
+        # --- End Blockchain Integration Call ---
+
+        # Redirect AFTER attempting blockchain interaction
         return redirect(url_for("project_detail", project_id=project.id))
 
     # GET request

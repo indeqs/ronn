@@ -13,6 +13,14 @@
             <i class="fas fa-search"></i>
         </button>
     </div>
+    {# --- Add New Project Button --- #}
+    {% if current_user.role in ['admin', 'engineer'] %}
+    <a href="{{ url_for('create_project') }}" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>New Project
+    </a>
+    {% endif %}
+    {# --- End Add Button --- #}
+    
     {% endif %}
     {# Optional: Add create button here as well if FAB isn't sufficient #}
     {# {% if current_user.role in ['admin', 'engineer'] %}

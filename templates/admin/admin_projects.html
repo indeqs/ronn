@@ -27,7 +27,7 @@
                             </a>
                             <small class="d-block text-muted">{{ project.project_type }}</small>
                         </td>
-                        <td>{{ project.client_name if project.client_name else 'N/A' }}</td>
+                        <td>{{ project.client.username if project.client.username else 'N/A' }}</td>
                         <td>{{ project.owner.username if project.owner else 'N/A' }}</td>
                         <td>{{ project.location }}</td>
                         <td>

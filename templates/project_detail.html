@@ -12,6 +12,15 @@
     </ol>
 </nav>
 
+<div class="d-flex justify-content-between align-items-center mb-4">
+    {# Existing breadcrumbs or page title could go here #}
+    {# --- Add Back Button --- #}
+    <a href="{{ url_for('projects_list') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Projects
+    </a>
+    {# --- End Back Button --- #}
+</div>
+
 {# --- Project Header Card --- #}
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-light py-3 d-flex flex-wrap justify-content-between align-items-center">
@@ -47,8 +56,13 @@
 
                 {# --- Display Assigned Client --- #}
                 <h6 class="mt-3"><i class="fas fa-user-tag me-2 text-muted"></i>Client</h6>
-                <p>{{ project.client_name if project.client_name else 'N/A'}} </p>
-                <p class="text-muted fst-italic">No client assigned</p>
+                {% if project.client %} {# Check if client relationship exists #}
+                <p>{{ project.client.username }} {# Access username via relationship #}
+                    <span class="text-muted small">({{ project.client.email }})</span>
+                </p>
+                {% else %}
+                <p class="text-muted fst-italic">Client not assigned or found</p> {# Fallback #}
+                {% endif %}
                 {# --- End Client --- #}
                 <h6 class="mt-3"><i class="fas fa-user-tie me-2 text-muted"></i>Owner</h6>
                 {# Use relationship: project.owner #}

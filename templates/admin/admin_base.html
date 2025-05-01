@@ -1,31 +1,100 @@
-{% extends 'base.html' %} {# Or create a completely separate base #}
+{# templates/admin/admin_base.html #}
+{% extends 'base.html' %}
 
 {% block title %}Admin Panel - {{ super() }}{% endblock %}
 
-{% block content %}
-<div class="row">
-    {# Admin Sidebar Navigation #}
-    <div class="col-md-3">
-        <div class="list-group mb-4 shadow-sm">
-            <a href="{{ url_for('admin_dashboard') }}"
-                class="list-group-item list-group-item-action {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
-                <i class="fas fa-tachometer-alt fa-fw me-2"></i>Admin Dashboard
-            </a>
-            <a href="{{ url_for('admin_users') }}"
-                class="list-group-item list-group-item-action {% if request.endpoint == 'admin_users' %}active{% endif %}">
-                <i class="fas fa-users fa-fw me-2"></i>Manage Users
-            </a>
-            <a href="{{ url_for('admin_projects') }}"
-                class="list-group-item list-group-item-action {% if request.endpoint == 'admin_projects' %}active{% endif %}">
-                <i class="fas fa-project-diagram fa-fw me-2"></i>View Projects
-            </a>
-            {# Add more admin links as needed #}
+{# Override the base navbar with the dark admin navbar #}
+{% block navbar %}
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{{ url_for('admin_dashboard') }}">
+            <i class="fas fa-user-shield me-2"></i>Admin Panel
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbarNav"
+            aria-controls="adminNavbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="adminNavbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}"
+                        href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'admin_users' %}active{% endif %}"
+                        href="{{ url_for('admin_users') }}">Users</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'admin_projects' %}active{% endif %}"
+                        href="{{ url_for('admin_projects') }}">Projects</a>
+                </li>
+            </ul>
+            <div class="navbar-nav">
+                {% if current_user %}
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="navbarUserDropdown"
+                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user-circle me-2"></i>{{ current_user.username }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarUserDropdown">
+                        <li><span class="dropdown-item-text text-muted small">Administrator</span></li>
+                        {# Link back to non-admin dashboard #}
+                        <li><a class="dropdown-item" href="{{ url_for('user_dashboard') }}"><i
+                                    class="fas fa-arrow-left fa-fw me-2"></i>Exit Admin View</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i
+                                    class="fas fa-sign-out-alt fa-fw me-2"></i>Logout</a></li>
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
+</nav>
+{% endblock navbar %}
 
-    {# Main Admin Content Area #}
-    <div class="col-md-9">
-        {% block admin_content %}{% endblock %} {# Specific admin page content goes here #}
+
+{# *** Override the main content block from base.html *** #}
+{% block content %}
+<div class="container-fluid mt-4"> {# Use container-fluid for wider layout #}
+    <div class="row">
+        {# Admin Sidebar Navigation #}
+        <div class="col-lg-2 col-md-3">
+            {# Make sidebar sticky within its column #}
+            <div class="list-group mb-4 shadow-sm position-sticky" style="top: 80px;"> {# Adjust top offset based on
+                navbar height #}
+                <a href="{{ url_for('admin_dashboard') }}"
+                    class="list-group-item list-group-item-action d-flex align-items-center {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt fa-fw me-2"></i>Dashboard
+                </a>
+                <a href="{{ url_for('admin_users') }}"
+                    class="list-group-item list-group-item-action d-flex align-items-center {% if request.endpoint == 'admin_users' %}active{% endif %}">
+                    <i class="fas fa-users fa-fw me-2"></i>Users
+                </a>
+                <a href="{{ url_for('admin_projects') }}"
+                    class="list-group-item list-group-item-action d-flex align-items-center {% if request.endpoint == 'admin_projects' %}active{% endif %}">
+                    <i class="fas fa-project-diagram fa-fw me-2"></i>Projects
+                </a>
+                {# Add more admin links as needed #}
+            </div>
+        </div>
+
+        {# Main Admin Content Area - This is where admin_content block from specific pages goes #}
+        <div class="col-lg-10 col-md-9">
+            {% block admin_content %}
+            {# Default content if a child template doesn't define admin_content #}
+            <p>Select an option from the admin menu.</p>
+            {% endblock admin_content %}
+        </div>
     </div>
 </div>
-{% endblock %}
+{% endblock content %} {# *** End the override of the main 'content' block *** #}
+
+
+{# Optionally prevent the main footer from base.html from appearing in admin area #}
+{% block footer %}{% endblock footer %}
+
+{# Optionally prevent extra_js from base.html unless needed for admin pages #}
+{% block extra_js %}{% endblock extra_js %}
