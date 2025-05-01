@@ -76,22 +76,5 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Password visibility toggle
-        const togglePassword = document.getElementById('togglePassword');
-        const password = document.getElementById('password');
-
-        togglePassword.addEventListener('click', function () {
-            // Toggle the password field type
-            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
-            password.setAttribute('type', type);
-
-            // Toggle the eye icon
-            this.querySelector('i').classList.toggle('fa-eye');
-            this.querySelector('i').classList.toggle('fa-eye-slash');
-        });
-    });
-</script>
-{% endblock %}
+{# Remove the inline script that conflicts with validation.js #}
+{% block extra_js %}{% endblock %}

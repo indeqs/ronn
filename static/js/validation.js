@@ -1,20 +1,38 @@
 document.addEventListener('DOMContentLoaded', function () {
     // --- Password Visibility Toggle ---
-    const togglePassword = document.getElementById('togglePassword');
+    // Toggle visibility for the main password field
+    const togglePasswordButton = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
-    const confirmPasswordInput = document.getElementById('confirm_password'); // Added confirm
 
-    if (togglePassword && passwordInput) {
-        togglePassword.addEventListener('click', function () {
-            // Toggle the password field type
+    if (togglePasswordButton && passwordInput) {
+        togglePasswordButton.addEventListener('click', function () {
             const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
             passwordInput.setAttribute('type', type);
-            if (confirmPasswordInput) { // Toggle confirm field too if it exists
-                confirmPasswordInput.setAttribute('type', type);
-            }
+
             // Toggle the eye icon
-            this.querySelector('i').classList.toggle('fa-eye');
-            this.querySelector('i').classList.toggle('fa-eye-slash');
+            const icon = this.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('fa-eye');
+                icon.classList.toggle('fa-eye-slash');
+            }
+        });
+    }
+
+    // Toggle visibility for the confirm password field
+    const toggleConfirmPasswordButton = document.getElementById('toggleConfirmPassword');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+
+    if (toggleConfirmPasswordButton && confirmPasswordInput) {
+        toggleConfirmPasswordButton.addEventListener('click', function () {
+            const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            confirmPasswordInput.setAttribute('type', type);
+
+            // Toggle the eye icon
+            const icon = this.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('fa-eye');
+                icon.classList.toggle('fa-eye-slash');
+            }
         });
     }
 
@@ -23,19 +41,22 @@ document.addEventListener('DOMContentLoaded', function () {
     if (registerForm) {
         const usernameInput = document.getElementById('username');
         const passwordFeedback = document.getElementById('password-feedback');
-        const confirmPasswordFeedback = document.getElementById('confirm_password')?.nextElementSibling; // Get feedback div
+        // Use optional chaining in case confirm_password is not present for some reason
+        const confirmPasswordFeedback = document.getElementById('confirm_password')?.nextElementSibling;
         const passwordStrengthDiv = document.getElementById('password-strength'); // Optional strength indicator
 
         // Helper function for Bootstrap validation classes
         const setValidationState = (inputElement, isValid, feedbackElement, message = null) => {
-            if (isValid) {
-                inputElement.classList.remove('is-invalid');
-                inputElement.classList.add('is-valid');
-                if (feedbackElement) feedbackElement.textContent = ''; // Clear feedback
-            } else {
-                inputElement.classList.remove('is-valid');
-                inputElement.classList.add('is-invalid');
-                if (feedbackElement && message) feedbackElement.textContent = message;
+            if (inputElement) { // Added a check to ensure the element exists
+                if (isValid) {
+                    inputElement.classList.remove('is-invalid');
+                    inputElement.classList.add('is-valid');
+                    if (feedbackElement) feedbackElement.textContent = ''; // Clear feedback
+                } else {
+                    inputElement.classList.remove('is-valid');
+                    inputElement.classList.add('is-invalid');
+                    if (feedbackElement && message) feedbackElement.textContent = message;
+                }
             }
         };
 
@@ -75,10 +96,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 passwordStrengthDiv.textContent = `Strength: ${feedback}`;
                 passwordStrengthDiv.className = `mt-1 small ${className}`;
 
-                // Also validate length requirement
+                // Also validate length requirement using setValidationState
                 const isLengthValid = pass.length >= 8;
+                // Pass the passwordFeedback element to setValidationState
                 setValidationState(passwordInput, isLengthValid, passwordFeedback,
                     isLengthValid ? '' : 'Password must be at least 8 characters long.');
+
 
                 // Trigger confirm password validation when password changes
                 if (confirmPasswordInput) {
@@ -105,40 +128,46 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // 4. Form Submission Validation (using Bootstrap's built-in)
         registerForm.addEventListener('submit', function (event) {
-            // Check username validity again on submit
+            let formIsValid = true; // Flag to track overall form validity
+
+            // Check username validity
             if (usernameInput) {
                 const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
                 if (!usernameRegex.test(usernameInput.value)) {
                     setValidationState(usernameInput, false, usernameInput.nextElementSibling,
                         'Username must be 3-20 characters (letters, numbers, underscore only).');
-                    event.preventDefault();
-                    event.stopPropagation();
+                    formIsValid = false;
                 } else {
                     setValidationState(usernameInput, true, usernameInput.nextElementSibling);
                 }
             }
-            // Check password length again on submit
+
+            // Check password length
             if (passwordInput) {
                 if (passwordInput.value.length < 8) {
                     setValidationState(passwordInput, false, passwordFeedback, 'Password must be at least 8 characters long.');
-                    event.preventDefault();
-                    event.stopPropagation();
+                    formIsValid = false;
                 } else {
                     setValidationState(passwordInput, true, passwordFeedback);
                 }
             }
-            // Check confirm password match again on submit
+
+            // Check confirm password match and length
             if (confirmPasswordInput) {
                 validateConfirmPassword(); // Run the validation logic
                 if (!confirmPasswordInput.classList.contains('is-valid')) { // Check if it's valid
-                    event.preventDefault();
-                    event.stopPropagation();
+                    formIsValid = false;
                 }
             }
 
-
             // Bootstrap's checkValidity handles required fields, email format, etc.
+            // We still run this to get feedback on other fields (email, role)
             if (!registerForm.checkValidity()) {
+                formIsValid = false;
+            }
+
+            // Prevent form submission if any custom validation failed
+            if (!formIsValid) {
                 event.preventDefault();
                 event.stopPropagation();
             }
