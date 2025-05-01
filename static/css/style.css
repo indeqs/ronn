@@ -18,6 +18,12 @@ body {
 
 /* Navbar */
 /* Navbar Improvements */
+.navbar {
+    margin-top: 0;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
 .navbar-dark .navbar-nav .nav-link {
     color: rgba(255, 255, 255, 0.9) !important;
     /* Increased opacity from default */
@@ -35,6 +41,11 @@ body {
     background-color: rgba(255, 255, 255, 0.1);
     /* Subtle highlight background */
     border-radius: 0.25rem;
+}
+
+html {
+    margin: 0;
+    padding: 0;
 }
 
 /* Current page indicator */
@@ -262,13 +273,16 @@ body {
 }
 
 main.container {
-    flex: 1;
+    padding-top: 2rem;
 }
 
 /* Adjust padding top if using sticky navbar */
 body {
-    padding-top: 70px;
-    /* Adjust based on your navbar height */
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Responsive padding for sticky navbar */
