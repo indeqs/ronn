@@ -13,9 +13,10 @@ from flask import (
     flash,
     session,
     current_app,
-    jsonify,  # Added for potential future AJAX
+    Response
 )
 from flask_sqlalchemy import SQLAlchemy
+import csv, io
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta, date  # Import date
 from functools import wraps
@@ -200,7 +201,7 @@ def create_default_admin():
         if not existing_admin:
             print(f"Admin user '{admin_username}' not found, creating...")
             # Ensure the role is 'admin'
-            hashed_password = generate_password_hash(admin_password)
+            hashed_password = generate_password_hash(admin_password, method='pbkdf2:sha256')
             admin_user = User(
                 username=admin_username,
                 email=admin_email,
@@ -224,7 +225,7 @@ def create_default_admin():
                 )
                 existing_admin.role = "admin"
                 # Optionally reset password if needed for consistency (or handle separately)
-                # existing_admin.password = generate_password_hash(admin_password)
+                # existing_admin.password = generate_password_hash(admin_password, method='pbkdf2:sha256')
                 try:
                     db.session.commit()
                     print(f"User '{existing_admin.username}' role updated to admin.")
@@ -395,7 +396,7 @@ def register():
         otp_expiry = datetime.utcnow() + timedelta(
             minutes=app.config["OTP_EXPIRY_MINUTES"]
         )
-        hashed_password = generate_password_hash(password)
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
 
         new_user = User(
             username=username,
@@ -682,6 +683,78 @@ def unban_user(user_id_to_unban):  # Renamed parameter
     flash(f"User '{user_to_unban.username}' has been unbanned.", "success")
     return redirect(url_for("admin_users"))
 
+# --- New Route for Downloading Project Report ---
+@app.route("/admin/projects/download")
+@login_required
+@role_required("admin")
+def admin_download_projects_report():
+    """Generates and serves a CSV report of all projects."""
+    try:
+        # 1. Fetch all projects with related data (optimized)
+        projects = Project.query.options(
+            db.joinedload(Project.owner),
+            db.joinedload(Project.client)
+        ).order_by(Project.id).all()
+
+        # 2. Prepare CSV data in memory using StringIO
+        string_io = io.StringIO()
+        csv_writer = csv.writer(string_io)
+
+        # 3. Write Header Row
+        header = [
+            "Project ID", "Project Name", "Project Type", "Client Name", "Client Email",
+            "Owner (Engineer)", "Owner Email", "Location", "Phase", "Status",
+            "Start Date", "End Date", "No. Inspections"
+        ]
+        csv_writer.writerow(header)
+
+        # 4. Write Data Rows
+        for project in projects:
+            # Safely access related object attributes
+            client_name = project.client.username if project.client else 'N/A'
+            client_email = project.client.email if project.client else 'N/A'
+            owner_name = project.owner.username if project.owner else 'N/A'
+            owner_email = project.owner.email if project.owner else 'N/A'
+
+            # Format dates nicely
+            start_date_str = project.start_date.strftime('%Y-%m-%d') if project.start_date else ''
+            end_date_str = project.end_date.strftime('%Y-%m-%d') if project.end_date else ''
+
+            row = [
+                project.id,
+                project.name,
+                project.project_type,
+                client_name,
+                client_email,
+                owner_name,
+                owner_email,
+                project.location,
+                project.phase,
+                project.status,
+                start_date_str,
+                end_date_str,
+                len(project.inspections) # Get count of inspections from relationship
+            ]
+            csv_writer.writerow(row)
+
+        # 5. Prepare the Flask Response
+        output = string_io.getvalue()
+        string_io.close()
+
+        # Generate filename with current date
+        today = date.today().strftime('%Y-%m-%d')
+        filename = f"blockinspect_projects_report_{today}.csv"
+
+        return Response(
+            output,
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment;filename={filename}"}
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating project report: {e}")
+        flash("Could not generate the project report. Please try again later.", "danger")
+        return redirect(url_for('admin_projects'))
 
 @app.route("/logout")
 def logout():
@@ -805,7 +878,7 @@ def reset_password(token):
             return render_template("reset_password.html", token=token)
 
         # Update user's password
-        user.password = generate_password_hash(password)
+        user.password = generate_password_hash(password, method='pbkdf2:sha256')
 
         # Delete the used token
         db.session.delete(token_entry)
