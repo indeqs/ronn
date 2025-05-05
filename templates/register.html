@@ -30,12 +30,11 @@
 
                     {# Email Field #}
                     <div class="mb-3">
-                        <label for="email" class="form-label">Email Address</label>
+                        <label for="email" class="form-label">Email</label>
                         <div class="input-group has-validation">
                             <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                            <input type="email" class="form-control" id="email" name="email" required
-                                value="{{ request.form.email }}">
-                            <div class="invalid-feedback">
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <div class="invalid-feedback" id="email-feedback">
                                 Please enter a valid email address.
                             </div>
                         </div>

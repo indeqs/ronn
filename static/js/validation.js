@@ -60,6 +60,18 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
 
+        // Email Validation
+        const emailInput = document.getElementById('email');
+        const emailFeedback = document.getElementById('email-feedback'); // Add this element in your HTML if not present
+
+        if (emailInput) {
+            emailInput.addEventListener('input', () => {
+                const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+                const isValid = emailRegex.test(emailInput.value);
+                setValidationState(emailInput, isValid, emailFeedback, 'Please enter a valid email address.');
+            });
+        }
+
         // 1. Username Validation (on input)
         if (usernameInput) {
             usernameInput.addEventListener('input', () => {
