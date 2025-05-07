@@ -648,8 +648,8 @@ def admin_projects():
 @app.route("/admin/users/<int:user_id>/ban", methods=["POST"])
 @login_required
 @role_required("admin")
-def ban_user(user_id_to_ban):  # Renamed parameter to avoid confusion
-    user_to_ban = User.query.get_or_404(user_id_to_ban)
+def ban_user(user_id):  # Renamed parameter to avoid confusion
+    user_to_ban = User.query.get_or_404(user_id)
     # Get the currently logged-in admin user from session
     admin_user_id = session.get("user_id")
     if not admin_user_id:
@@ -676,8 +676,8 @@ def ban_user(user_id_to_ban):  # Renamed parameter to avoid confusion
 @app.route("/admin/users/<int:user_id>/unban", methods=["POST"])
 @login_required
 @role_required("admin")
-def unban_user(user_id_to_unban):  # Renamed parameter
-    user_to_unban = User.query.get_or_404(user_id_to_unban)
+def unban_user(user_id):  # Renamed parameter
+    user_to_unban = User.query.get_or_404(user_id)
     user_to_unban.is_banned = False
     db.session.commit()
     flash(f"User '{user_to_unban.username}' has been unbanned.", "success")
@@ -755,6 +755,114 @@ def admin_download_projects_report():
         current_app.logger.error(f"Error generating project report: {e}")
         flash("Could not generate the project report. Please try again later.", "danger")
         return redirect(url_for('admin_projects'))
+
+@app.route("/admin/users/download/all")
+@login_required
+@role_required("admin")
+def admin_download_all_users_report():
+    """Generates and serves a CSV report of all users."""
+    try:
+        # 1. Fetch all users
+        users = User.query.order_by(User.id).all()
+
+        # 2. Prepare CSV data
+        string_io = io.StringIO()
+        csv_writer = csv.writer(string_io)
+
+        # 3. Write Header Row
+        header = [
+            "User ID", "Username", "Email", "Role",
+            "Email Verified", "Is Banned", "Projects Owned", "Projects as Client"
+        ]
+        csv_writer.writerow(header)
+
+        # 4. Write Data Rows
+        for user in users:
+            # Get counts from relationships
+            projects_owned_count = len(user.projects_owned)
+            projects_as_client_count = len(user.client_projects)
+
+            row = [
+                user.id,
+                user.username,
+                user.email,
+                user.role.capitalize(),
+                "Yes" if user.email_verified else "No",
+                "Yes" if user.is_banned else "No",
+                projects_owned_count,
+                projects_as_client_count
+            ]
+            csv_writer.writerow(row)
+
+        # 5. Prepare the Flask Response
+        output = string_io.getvalue()
+        string_io.close()
+
+        today = date.today().strftime('%Y-%m-%d')
+        filename = f"blockinspect_all_users_report_{today}.csv"
+
+        return Response(
+            output,
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment;filename={filename}"}
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating all users report: {e}")
+        flash("Could not generate the all users report. Please try again later.", "danger")
+        return redirect(url_for('admin_users'))
+
+
+# --- New Route for Downloading BANNED Users Report ---
+@app.route("/admin/users/download/banned")
+@login_required
+@role_required("admin")
+def admin_download_banned_users_report():
+    """Generates and serves a CSV report of all banned users."""
+    try:
+        # 1. Fetch only banned users
+        banned_users = User.query.filter_by(is_banned=True).order_by(User.id).all()
+
+        # 2. Prepare CSV data
+        string_io = io.StringIO()
+        csv_writer = csv.writer(string_io)
+
+        # 3. Write Header Row (can be the same as all users or more specific)
+        header = [
+            "User ID", "Username", "Email", "Role", "Email Verified"
+            # You might not need 'Is Banned' since they are all banned
+            # Or 'Date Banned' if you add that field to the User model
+        ]
+        csv_writer.writerow(header)
+
+        # 4. Write Data Rows
+        for user in banned_users:
+            row = [
+                user.id,
+                user.username,
+                user.email,
+                user.role.capitalize(),
+                "Yes" if user.email_verified else "No",
+            ]
+            csv_writer.writerow(row)
+
+        # 5. Prepare the Flask Response
+        output = string_io.getvalue()
+        string_io.close()
+
+        today = date.today().strftime('%Y-%m-%d')
+        filename = f"blockinspect_banned_users_report_{today}.csv"
+
+        return Response(
+            output,
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment;filename={filename}"}
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error generating banned users report: {e}")
+        flash("Could not generate the banned users report. Please try again later.", "danger")
+        return redirect(url_for('admin_users'))
 
 @app.route("/logout")
 def logout():

@@ -1,13 +1,34 @@
 {% extends 'admin/admin_base.html' %}
 
 {% block admin_content %}
-<h2 class="fw-bold mb-4">Manage Users</h2>
+{# --- Page Header with Download Buttons and Search --- #}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h2 class="fw-bold mb-0">Manage Users</h2>
+    <div class="d-flex align-items-center gap-2 flex-wrap"> {# Group search and buttons #}
+        {# --- Search Input --- #}
+        <div class="input-group input-group-sm" style="max-width: 300px;">
+            <span class="input-group-text" id="user-search-addon"><i class="fas fa-search"></i></span>
+            <input type="text" class="form-control" id="user-search-input" placeholder="Search by username or email..."
+                aria-label="Search users" aria-describedby="user-search-addon">
+        </div>
+        {# --- Download Buttons Group --- #}
+        <div class="btn-group" role="group" aria-label="User Report Downloads">
+            <a href="{{ url_for('admin_download_all_users_report') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-download me-1"></i>All Users
+            </a>
+            <a href="{{ url_for('admin_download_banned_users_report') }}" class="btn btn-danger btn-sm">
+                <i class="fas fa-download me-1"></i>Banned Users
+            </a>
+        </div>
+    </div>
+</div>
 
 
 <div class="card shadow-sm border-0">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            {# Add id to the table for easier selection in JS #}
+            <table class="table table-hover align-middle mb-0" id="admin-users-table">
                 <thead class="table-light">
                     <tr>
                         <th>Username</th>
@@ -19,10 +40,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for user in users.items %} {# Use users.items for pagination #}
-                    <tr>
-                        <td>{{ user.username }}</td>
-                        <td>{{ user.email }}</td>
+                    {% for user in users.items %} {# Loop variable is 'user' #}
+                    {# Add a class to table rows for easier JS selection #}
+                    <tr class="user-table-row">
+                        <td class="user-username">{{ user.username }}</td>
+                        <td class="user-email">{{ user.email }}</td>
                         <td>{{ user.role|capitalize }}</td>
                         <td class="text-center">
                             {% if user.email_verified %}
@@ -62,24 +84,26 @@
                             </form>
                             {% endif %}
                             {% else %}
-                            {# Optionally show view/edit button for admins/self #}
                             <span class="text-muted small fst-italic">N/A</span>
                             {% endif %}
-                            {# Add Edit/View link if needed #}
                         </td>
                     </tr>
                     {% else %}
-                    <tr>
+                    <tr id="no-users-row"> {# Add an ID for the "no users" row #}
                         <td colspan="6" class="text-center text-muted py-4">No users found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {# Add a row for "No matching users found" message, initially hidden #}
+            <div id="no-matching-users-message" class="text-center text-muted py-4" style="display: none;">
+                No users match your search criteria.
+            </div>
         </div>
     </div>
-    {# Pagination Links #}
+    {# Pagination Links (will be hidden/shown by JS if search is active) #}
     {% if users.pages > 1 %}
-    <div class="card-footer bg-light">
+    <div class="card-footer bg-light" id="users-pagination-footer"> {# Add ID to footer for JS #}
         <nav aria-label="User pagination">
             <ul class="pagination justify-content-center mb-0">
                 {# Previous Page Link #}
@@ -110,13 +134,61 @@
 {% endblock %}
 
 {% block extra_js %}
-{# Initialize tooltips for this page #}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Initialize tooltips (if any new ones were added)
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl)
-        })
+        });
+
+        // --- User Search Functionality ---
+        const searchInput = document.getElementById('user-search-input');
+        const usersTable = document.getElementById('admin-users-table');
+        const tableRows = usersTable?.querySelectorAll('tbody tr.user-table-row'); // Select only data rows
+        const noUsersRow = document.getElementById('no-users-row'); // Row for "No users found"
+        const noMatchingMessage = document.getElementById('no-matching-users-message');
+        const paginationFooter = document.getElementById('users-pagination-footer');
+
+        if (searchInput && tableRows && tableRows.length > 0) { // Only run if there are rows to search
+            searchInput.addEventListener('keyup', function () {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                let visibleRowCount = 0;
+
+                tableRows.forEach(row => {
+                    const username = row.querySelector('.user-username')?.textContent.toLowerCase() || '';
+                    const email = row.querySelector('.user-email')?.textContent.toLowerCase() || '';
+                    // Add other searchable fields if needed, e.g., role
+                    // const role = row.querySelector('td:nth-child(3)')?.textContent.toLowerCase() || '';
+
+                    if (!searchTerm || username.includes(searchTerm) || email.includes(searchTerm)) {
+                        row.style.display = ''; // Show row
+                        visibleRowCount++;
+                    } else {
+                        row.style.display = 'none'; // Hide row
+                    }
+                });
+
+                // Show/hide "no matching users" message
+                if (noMatchingMessage) {
+                    noMatchingMessage.style.display = (visibleRowCount === 0 && searchTerm) ? 'block' : 'none';
+                }
+
+                // Show/hide original "no users" row (if it exists and search is empty)
+                if (noUsersRow) {
+                    noUsersRow.style.display = (visibleRowCount === 0 && !searchTerm) ? '' : 'none';
+                }
+
+
+                // Hide pagination if search is active, as it applies to the full dataset
+                if (paginationFooter) {
+                    paginationFooter.style.display = searchTerm ? 'none' : '';
+                }
+            });
+        } else if (searchInput && noMatchingMessage) {
+            // Handle case where table is initially empty but search input exists
+            // noMatchingMessage.style.display = 'none'; // Ensure it's hidden initially
+        }
     });
 </script>
 {% endblock %}
